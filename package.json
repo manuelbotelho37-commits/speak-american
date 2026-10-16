@@ -1,0 +1,11 @@
+{
+  "name": "speak-american",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SPEAK AMERICAN : coach d'anglais américain en 120 jours (PWA gratuite)",
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "test": "node tests/unit.mjs && node tests/e2e.mjs"
+  }
+}
