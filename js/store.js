@@ -14,7 +14,7 @@ function defaults() {
     createdAt: Date.now(),
     profile: { name: "", placementDone: false, placement: null, level: null, consentFacts: false, facts: [] },
     settings: {
-      duration: 30, theme: "dark", rate: 0.95, voiceURI: "", charVoices: {},
+      duration: 30, theme: "dark", rate: 0.95, speed: 0.8, voiceURI: "", charVoices: {},
       aiUrl: "/api/alex", accessCode: "", immersion: "debutant", handsFree: true, silenceMs: 2200,
       showIPA: false, newPerSession: 5, fontScale: 1,
     },

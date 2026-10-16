@@ -9,6 +9,15 @@ import { conversationView, talkPage, dialoguesPage, americaPage } from "./talk.j
 import { lessonPage, reviewSession, vocabPage, memoryPage, gamesPage, listenPage, pronPage, STEPS, PLAN, evaluationView } from "./learn.js";
 import { isMastered } from "./srs.js";
 
+// Curseur de vitesse de la voix (réglage global, les boutons « Lentement » ralentissent encore plus)
+function speedSlider() {
+  const st = get().settings;
+  const out = h("span", { class: "small muted" }, Math.round((st.speed ?? 0.8) * 100) + " %");
+  const inp = h("input", { type: "range", min: 0.4, max: 1.2, step: 0.05, value: st.speed ?? 0.8, "aria-label": "Vitesse de la voix",
+    onChange: e => { const v = Number(e.target.value); update(x => { x.settings.speed = v; }); out.textContent = Math.round(v * 100) + " %"; speak("Hi! This is my speed.", { charId: "alex" }); } });
+  return h("div", { class: "row" }, "🐢", inp, "🐇", out);
+}
+
 const TABS = [
   ["home", "🏠", "Accueil"], ["parler", "🎤", "Parler"], ["ecouter", "🎧", "Écouter"], ["prononciation", "👄", "Prononciation"],
   ["vocabulaire", "📖", "Vocabulaire"], ["dialogues", "💬", "Dialogues"], ["amerique", "🇺🇸", "Je suis en Amérique"], ["memoire", "🧠", "Mémoire"],
@@ -193,6 +202,7 @@ function onboardingPage() {
         h("div", { class: "avatar big", style: { background: CHARACTERS.alex.color } }, "🧑‍🏫"),
         btn("▶️ Écouter Alex", () => speak("Hi! I'm Alex, your American English teacher. Don't worry, we will go step by step. You can do it!", { charId: "alex" }), "btn huge primary"),
         h("p", { class: "small" }, "Choisissez la voix qui vous plaît le plus :"), sel,
+        h("p", { class: "small" }, "Vitesse de la voix (vers la gauche = plus lent) :"), speedSlider(),
         h("p", { class: "small muted" }, "Sur Windows, Microsoft Edge propose des voix « Natural » très réalistes. Sur Android, les voix Google sont dans Paramètres → Gestion globale → Synthèse vocale."),
         btn("Suivant : test de niveau (5 min) ➜", () => setStep(5), "btn primary"));
       speak("Hi! I'm Alex, your American English teacher. Nice to meet you!", { charId: "alex" });
@@ -383,7 +393,7 @@ function settingsPage() {
     h("div", { class: "card" }, h("h2", {}, "Voix et micro"),
       row("Voix d'Alex", h("span", { class: "row" }, voiceSel, btn("🔊", () => speak("Hi! I'm Alex. Let's practice!", { charId: "alex" }), "icon-btn"))),
       charVoiceBox,
-      row("Vitesse de la voix", h("input", { type: "range", min: 0.6, max: 1.2, step: 0.05, value: s.rate, "aria-label": "Vitesse", onChange: e => { update(x => { x.settings.rate = Number(e.target.value); }); speak("This is my speed.", {}); } })),
+      row("Vitesse de la voix", speedSlider()),
       row("Conversation mains libres", h("input", { type: "checkbox", checked: s.handsFree, onChange: e => update(x => { x.settings.handsFree = e.target.checked; }) }), "Activé : après chaque réponse d'Alex, le micro se rallume tout seul. Désactivé : appuyez sur le micro à chaque phrase."),
       row("Temps d'attente quand je réfléchis", h("select", { class: "select", onChange: e => update(x => { x.settings.silenceMs = Number(e.target.value); }) }, [[1500, "Court (1,5 s)"], [2200, "Normal (2 s)"], [3500, "Long (3,5 s)"], [5000, "Très long (5 s)"]].map(([v, l]) => h("option", { value: v, selected: s.silenceMs === v }, l))), "Silence à attendre avant de considérer que vous avez fini (sur ordinateur ; Android décide lui-même)."),
       row("Afficher l'IPA", h("input", { type: "checkbox", checked: s.showIPA, onChange: e => update(x => { x.settings.showIPA = e.target.checked; }) }), "Transcription phonétique internationale, en plus de la prononciation simplifiée."),

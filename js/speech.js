@@ -58,7 +58,8 @@ export function speak(text, { rate, charId = "alex", onend, onstart } = {}) {
     stopSpeaking();
     const token = ++speakingToken;
     const s = get().settings;
-    const r = rate ?? s.rate ?? 0.95;
+    // rate = multiplicateur (1 = normal, 0.6 = lent) appliqué à la vitesse choisie par l'utilisateur
+    const r = Math.max(0.3, Math.min(2, (rate ?? 1) * (s.speed ?? 0.8)));
     const v = voiceFor(charId);
     const parts = String(text).replace(/\s+/g, " ").match(/[^.!?…]+[.!?…]*\s*/g) || [text];
     let i = 0;
