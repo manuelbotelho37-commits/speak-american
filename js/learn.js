@@ -208,7 +208,20 @@ export function lessonPage(dayN, nav) {
     const rest = order.slice(idx + 1).concat(order.slice(0, idx + 1));
     const nxt = rest.find(k => !d.steps[k] && !(k === "new" && skipNew));
     if (!nxt) return finished();
-    open(nxt);
+    pause(nxt);
+  }
+  // Après chaque étape : on peut s'arrêter là (10 minutes par-ci, par-là). Tout est sauvegardé.
+  function pause(nxt) {
+    cleanupArea();
+    drawSteps();
+    const d = dayState(dayN);
+    const left = order.filter(k => !d.steps[k] && !(k === "new" && skipNew)).length;
+    area.replaceChildren(h("div", { class: "card done-card" },
+      h("div", { class: "emoji-big" }, "✅"), h("h2", {}, "Étape terminée, bravo !"),
+      h("p", {}, `Encore ${left} étape${left > 1 ? "s" : ""} pour finir la séance du jour.`),
+      h("p", { class: "small muted" }, "Vous pouvez vous arrêter ici : tout est enregistré. La prochaine fois, l'application reprendra exactement à cet endroit."),
+      h("div", { class: "row wrap" }, btn(`▶️ Continuer : ${stepLabel(nxt)}`, () => open(nxt), "btn huge primary"), btn("⏸ J'arrête pour l'instant", () => nav.go("home"), "btn"))));
+    area.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function markDone(k) { setStep(dayN, k, true); drawSteps(k); }
 

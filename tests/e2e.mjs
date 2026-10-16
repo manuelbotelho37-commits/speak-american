@@ -47,10 +47,14 @@ step("Leçon jour 1 : révision");
 await page.getByRole("heading", { name: "Dire bonjour" }).waitFor();
 await page.getByText("Rien à réviser aujourd'hui").waitFor();
 await click("Continuer ➜");
+await page.getByText("Étape terminée, bravo !").waitFor();
+await page.screenshot({ path: `${OUT}/02b-pause.png` });
+await click(/▶️ Continuer :/);
 step("Nouveaux mots");
 for (let i = 0; i < 5; i++) { await page.locator(".word .big-en").waitFor(); if (i === 0) await page.screenshot({ path: `${OUT}/02-mot.png` }); await click("J'ai compris ➜"); }
 for (let i = 0; i < 5; i++) { await page.locator(".choice-btn").first().click(); await click("Suivant ➜"); }
 await click(/Continuer : parler avec Sarah/);
+await click(/▶️ Continuer :/);
 step("Conversation avec l'IA (fournisseur simulé)");
 await page.locator(".chat").waitFor();
 await page.getByPlaceholder(/Ou écrivez votre réponse/).fill("Hello Sarah, I am agree");
@@ -68,11 +72,13 @@ await page.getByText("Bonne conversation.").waitFor();
 await page.screenshot({ path: `${OUT}/04-bilan.png` });
 await page.locator(".modal-actions").getByRole("button", { name: "Fermer" }).click();
 await click("Continuer ➜");
+await click(/▶️ Continuer :/);
 step("Prononciation");
 await page.locator(".studio").first().waitFor();
 await page.screenshot({ path: `${OUT}/05-prononciation.png` });
 while (await page.getByRole("button", { name: "Phrase suivante ➜" }).count()) await click("Phrase suivante ➜");
 await click("Terminer la prononciation ➜");
+await click(/▶️ Continuer :/);
 step("Petit test");
 for (let i = 0; i < 10; i++) {
   await page.waitForSelector(".question, .lesson-area h3", { timeout: 15000 });

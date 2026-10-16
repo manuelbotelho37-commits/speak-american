@@ -125,6 +125,7 @@ function homePage() {
       h("h3", {}, "Ma séance"),
       h("ul", { class: "checklist" }, items),
       btn(startLabel, () => nav.go("lecon", cd), "btn huge primary", { disabled: ds.done && cd === 120 }),
+      !ds.done ? h("p", { class: "small muted" }, "⏱ Pas beaucoup de temps ? Faites une seule étape (5 à 10 minutes) et revenez plus tard : tout est gardé, l'application reprend où vous vous êtes arrêté.") : null,
       ds.done && cd < 120 ? h("p", { class: "small muted" }, "La séance suivante est prête quand vous voulez (idéalement demain).") : null),
     h("div", { class: "simple3" },
       btn(h("span", {}, "▶️", h("br"), "CONTINUER MA LEÇON"), () => nav.go("lecon", cd), "btn big3"),
