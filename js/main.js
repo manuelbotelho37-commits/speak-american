@@ -1,6 +1,6 @@
 // SPEAK AMERICAN — application principale : navigation, accueil, premier lancement, programme, progrès, réglages
 import { h, btn, toast, modal, confirmBox, pct, fmtMin, listenBtns, itemById, knownItems, needsContent, itemsForDay } from "./ui.js";
-import { get, update, subscribe, currentDay, dayState, dueIds, daysSinceLastActivity, exportData, importData, wipeAll, requestPersistence, masteredIds, studiedIds, todayKey } from "./store.js";
+import { get, update, save, subscribe, currentDay, dayState, dueIds, daysSinceLastActivity, exportData, importData, wipeAll, requestPersistence, masteredIds, studiedIds, todayKey } from "./store.js";
 import { speak, stopSpeaking, support, voicesReady, usVoices, testMicrophone, listen, compareWords, sttErrorFr } from "./speech.js";
 import { PROGRAM, MONTHS, dayInfo } from "./program.js";
 import { PLACEMENT, CHARACTERS, SOUNDS, CEFR } from "./content.js";
@@ -413,6 +413,9 @@ function settingsPage() {
       h("div", { class: "row wrap" }, remindTime, btn("📅 Télécharger le rappel quotidien", () => { update(x => { x.settings.remindTime = remindTime.value; }); downloadIcs(remindTime.value); }, "btn"))),
     h("div", { class: "card" }, h("h2", {}, "📲 Installer l'application"),
       installBox()),
+    h("div", { class: "card" }, h("h2", {}, "🔄 Mise à jour"),
+      h("p", { class: "small muted" }, "Recharge l'application pour obtenir la dernière version. Vos progrès sont conservés."),
+      btn("🔄 Mettre à jour l'application", reloadApp, "btn")),
     h("div", { class: "card" }, h("h2", {}, "💾 Mes données"),
       h("p", { class: "small" }, "Vos progrès sont enregistrés automatiquement dans ce navigateur, sur cet appareil uniquement. Ils ne se synchronisent PAS tout seuls entre l'ordinateur et le téléphone : utilisez « Exporter » sur l'un puis « Restaurer » sur l'autre."),
       h("p", { class: "small" }, "Ce qui part sur Internet : vos phrases (texte) envoyées à l'IA pendant les conversations, et le son du micro envoyé par Chrome/Edge à leur service de reconnaissance vocale. Vos enregistrements de prononciation restent sur l'appareil et sont effacés après l'exercice."),
@@ -453,6 +456,19 @@ window.addEventListener("hashchange", render);
 render();
 checkAi();
 window.addEventListener("online", () => checkAi());
+// Mise à jour simple : un bandeau propose de recharger quand une nouvelle version est publiée.
+function reloadApp() { try { save(true); } catch {} location.reload(); }
+function showUpdateBanner() {
+  if (document.querySelector(".update-banner")) return;
+  document.body.append(h("div", { class: "update-banner card", role: "status" },
+    h("span", {}, "✨ Une nouvelle version de l'application est prête."), btn("🔄 Mettre à jour", reloadApp, "btn primary")));
+}
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("./sw.js").then(reg => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) showUpdateBanner(); });
 }
