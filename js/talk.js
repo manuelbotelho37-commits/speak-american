@@ -222,9 +222,10 @@ export function conversationView(config) {
       if (!handsFree || !alive) break;
       if (!r) break;
       if (!r.text) {
-        noSpeech++;
-        if (noSpeech >= 3) { handsFree = false; updateMic(); setStatus("Je n'entends rien : conversation en pause. Appuyez sur le micro pour reprendre."); break; }
-        continue;
+        // Pas de réponse : on ne rallume PAS le micro en boucle. On attend tranquillement que la personne soit prête.
+        handsFree = false; updateMic();
+        setStatus("⏸ Je vous attends. Prenez votre temps, puis appuyez sur 🎤 quand vous êtes prêt à répondre.");
+        break;
       }
       noSpeech = 0;
       await userSays(r.text, true);
