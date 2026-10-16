@@ -121,7 +121,7 @@ export function conversationView(config) {
     setStatus(`${ch.name} réfléchit…`);
     try {
       const history = conv.history.map(m => ({ role: m.role, text: m.text }));
-      const r = await chat({ character: charId, situation: config.situation, level: conv.level, month: dayInfo(currentDay()).month, history, action, targetWords: targets.map(t => t.en), mode: config.mode || "chat" });
+      const r = await chat({ character: charId, situation: config.situation, level: conv.level, month: dayInfo(currentDay()).month, day: currentDay(), knownWords: knownItems().map(i => i.en), history, action, targetWords: targets.map(t => t.en), mode: config.mode || "chat" });
       // correction de la dernière phrase de l'apprenant
       const lastUser = [...conv.history].reverse().find(m => m.role === "user");
       if (lastUser && r.correction?.needed) {

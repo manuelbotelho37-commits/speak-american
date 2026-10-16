@@ -70,9 +70,9 @@ function learnerContext() {
 }
 
 // Tour de conversation. history : [{role:'user'|'assistant', text}]
-export function chat({ character, situation, level, month, history, action, targetWords = [], mode = "chat" }) {
+export function chat({ character, situation, level, month, day, knownWords = [], history, action, targetWords = [], mode = "chat" }) {
   const lc = learnerContext();
-  return post({ mode, character, situation, level, month, action, history: history.slice(-24), targetWords: targetWords.slice(0, 12), learner: { name: lc.name, facts: lc.facts } });
+  return post({ mode, character, situation, level, month, day, knownWords: knownWords.slice(-80), action, history: history.slice(-24), targetWords: targetWords.slice(0, 12), learner: { name: lc.name, facts: lc.facts } });
 }
 
 export function summarize({ character, situation, level, history }) {

@@ -53,6 +53,17 @@ const ACTIONS = {
   correct: "(The learner asks you to check their last sentence carefully: fill correction with the most natural American version, even for small improvements. In reply, briefly encourage them to say the better version.)",
 };
 
+// Progression « crescendo » : la longueur et la difficulté des répliques suivent le jour du programme.
+function stageFor(day, level) {
+  if (level === "immersion") return null;
+  if (level === "intermediaire" && day < 46) day = 46;
+  if (day <= 7) return "STAGE 1 (very first week, absolute beginner). Each reply = ONE tiny sentence of 2 to 5 words, e.g. \"Hi! I'm Sarah. And you?\" or \"Nice to meet you!\". Use ONLY the target words, the known words and the most basic words (hi, hello, yes, no, I, you, my, name, is, and, good, thanks, please). Ask only yes/no or one-word-answer questions. Each suggestion = 1 to 3 words. Never two questions. If the learner answers with one word, that is perfect: praise it.";
+  if (day <= 21) return "STAGE 2 (weeks 2-3). Each reply = 1 short sentence, max 6 words, present tense only, very common words, mostly the target and known words. One simple question. Each suggestion = 2 to 5 words.";
+  if (day <= 45) return "STAGE 3 (weeks 4-6). Each reply = 1 or 2 short sentences, max 9 words each, simple present/past/future with will. One question. Suggestions = short full sentences (max 7 words).";
+  if (day <= 75) return "STAGE 4 (months 3). Replies of 1-2 sentences, max 12 words each, natural but clear. Suggestions up to 10 words.";
+  return "STAGE 5 (month 4). Natural conversation, 1-3 sentences, still clear.";
+}
+
 function clip(s, n) { return String(s ?? "").slice(0, n); }
 
 function buildChatMessages(b) {
@@ -66,6 +77,11 @@ function buildChatMessages(b) {
   if (b.mode === "journal") system += "\nMODE: CONVERSATION JOURNAL. The learner tells you about their day or life. Listen, react with genuine interest, ask follow-up questions, and in correction offer a more natural version of their sentence when useful.";
   if (b.situation) system += `\nSITUATION / LESSON TOPIC: ${clip(b.situation, 300)}`;
   if (targets.length) system += `\nTARGET WORDS to reuse: ${targets.join(" | ")}`;
+  const day = Math.min(120, Math.max(1, Number(b.day) || 1));
+  const stage = stageFor(day, level);
+  const known = Array.isArray(b.knownWords) ? b.knownWords.slice(-80).map(w => clip(w, 50)) : [];
+  if (known.length) system += `\nWORDS THE LEARNER ALREADY KNOWS (prefer these): ${known.join(" | ")}`;
+  if (stage) system += `\nPROGRAM DAY ${day} of 120. ${stage} This length limit is STRICT and overrides everything else, including the situation.`;
   if (learner.name) system += `\nThe learner's first name is ${clip(learner.name, 40)}.`;
   if (facts.length) system += `\nThings the learner chose to share (use them to personalize): ${facts.join("; ")}`;
 
