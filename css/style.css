@@ -263,3 +263,5 @@ details summary { cursor: pointer; }
 
 .update-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:60;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:min(560px,calc(100% - 24px));border:1px solid var(--primary);box-shadow:0 8px 30px rgba(0,0,0,.45)}
 @media (min-width:820px){.update-banner{bottom:24px}}
+.oral-status{font-size:1.15rem;font-weight:600;margin:14px 0 6px;min-height:1.6em;color:var(--primary-2)}
+.oral-review .btn.huge.listening{animation:pulse 1.2s infinite}

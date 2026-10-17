@@ -1,6 +1,6 @@
 // Leçon quotidienne, révisions, vocabulaire, coach mémoire, jeux, écoute
 import { h, btn, toast, modal, shuffle, pct, itemById, itemsForDay, allItemsUpTo, knownItems, needsContent, listenBtns, speakIcon } from "./ui.js";
-import { speak, stopSpeaking, listen, compareWords, support, sttErrorFr } from "./speech.js";
+import { speak, speakFr, stopSpeaking, listen, compareWords, support, sttErrorFr } from "./speech.js";
 import { get, update, answer, discover, markDifficult, setSkill, setStep, setLast, completeDay, dayState, currentDay, dueIds, logConfusion, logListening, masteryLevel, SKILLS, card as getCard } from "./store.js";
 import { PROGRAM, dayInfo } from "./program.js";
 import { SOUNDS, GUIDED, CHARACTERS, SITUATIONS, VOCAB } from "./content.js";
@@ -110,7 +110,7 @@ export function quizRunner(questions, onEnd, opts = {}) {
 }
 
 // ====================== Révision (flashcards + auto-évaluation) ======================
-export function reviewSession(ids, onEnd) {
+function cardReview(ids, onEnd) {
   const queue = ids.map(id => ({ id, n: 0 }));
   const wrap = h("div", {});
   let done = 0, good = 0;
@@ -138,6 +138,131 @@ export function reviewSession(ids, onEnd) {
       : h("div", {}, h("div", { class: "q" }, "🧠 Retrouvez l'anglais (dites-le à voix haute) :"), h("div", { class: "big-fr" }, it.fr), it.emoji ? h("div", { class: "emoji-big" }, it.emoji) : null);
     if (mode === "listen") setTimeout(() => speak(it.en), 250);
     wrap.replaceChildren(h("div", { class: "progress-dots" }, `Carte ${done + 1} · encore ${queue.length} après celle-ci`), h("div", { class: "card flash" }, front, showBtn, reveal));
+  };
+  next();
+  return wrap;
+}
+
+// ====================== Révision : orale (par défaut) ou cartes ======================
+export function reviewSession(ids, onEnd) {
+  const wrap = h("div", {});
+  const oralOk = support.stt && support.tts;
+  const draw = () => {
+    const oral = oralOk && get().settings.reviewMode !== "cards";
+    const sw = oralOk ? h("div", { class: "row wrap small" },
+      h("span", { class: "muted" }, oral ? "Mode : 🎤 je réponds à voix haute" : "Mode : 🃏 cartes"),
+      btn(oral ? "🃏 Passer en mode cartes" : "🎤 Passer en mode oral", () => { stopSpeaking(); update(s => { s.settings.reviewMode = oral ? "cards" : "oral"; }); draw(); }, "btn ghost sm")) : null;
+    wrap.replaceChildren(...[sw, oral ? oralReview(ids, onEnd) : cardReview(ids, onEnd)].filter(Boolean));
+  };
+  draw();
+  return wrap;
+}
+
+// Révision orale : Alex pose la question à voix haute, on répond au micro, il réagit.
+const PRAISE = ["Great job!", "Perfect!", "Excellent!", "Yes! Well done!", "That's right!"];
+function oralReview(ids, onEnd) {
+  const queue = ids.map(id => ({ id, n: 0 }));
+  const wrap = h("div", { class: "oral-review" });
+  let done = 0, good = 0, listener = null, token = 0;
+  const isAlive = () => wrap.isConnected;
+  const stopAll = () => { token++; try { listener?.abort?.(); } catch {} listener = null; stopSpeaking(); };
+
+  const next = () => {
+    stopAll();
+    const cur = queue.shift();
+    if (!cur) { onEnd({ done, good }); return; }
+    const it = itemById(cur.id);
+    if (!it) return next();
+    // Type de question : « dire en anglais » ou « répondre » à une réplique de dialogue
+    const dlg = Array.isArray(it.dlg) && it.dlg.length >= 2 ? it.dlg : null;
+    const reply = dlg && done % 3 === 2 ? { q: dlg[0], a: dlg[1] } : null;
+    const expected = reply ? reply.a[1] : it.en;
+    const status = h("div", { class: "oral-status" });
+    const heard = h("div", { class: "small muted" });
+    const answerBox = h("div", { class: "reveal hidden" },
+      h("div", { class: "big-en" }, expected, " ", speakIcon(expected)),
+      h("div", { class: "ph" }, reply ? (reply.a[2] || "") : it.ph),
+      !reply ? h("div", { class: "big-fr" }, it.fr) : null,
+      it.tip ? h("div", { class: "tip small" }, "🧠 ", it.tip) : null);
+    let tries = 0, finished = false;
+
+    const ask = async () => {
+      const my = ++token;
+      setStatus("🔊 Alex vous parle…");
+      if (reply) {
+        await speakFr("Répondez en anglais.");
+        if (my !== token) return;
+        await speak(reply.q[1], { charId: "sarah" });
+      } else {
+        await speakFr("Comment dit-on : " + it.fr.replace(/\(.*?\)/g, "").replace(/[«»"]/g, "").trim() + " ?");
+      }
+      if (my !== token || !isAlive()) return;
+      hear();
+    };
+    const setStatus = (t) => { status.textContent = t; };
+    const grade = (g) => {
+      if (finished) return; finished = true;
+      answer(cur.id, g, "usedSpont");
+      done++; if (g >= 3) good++;
+      if (g === 1 && cur.n < 1) queue.push({ id: cur.id, n: cur.n + 1 });
+    };
+    const hear = async () => {
+      stopAll();
+      const my = ++token;
+      setStatus("🎤 À vous ! Dites-le en anglais…");
+      micBtn.classList.add("listening");
+      let r;
+      try { listener = listen({ onInterim: t => { heard.textContent = "« " + t + " »"; } }); r = await listener.promise; }
+      catch (e) { setStatus(sttErrorFr(e.code)); micBtn.classList.remove("listening"); return; }
+      finally { listener = null; }
+      micBtn.classList.remove("listening");
+      if (my !== token || !isAlive()) return;
+      if (!r?.text) { setStatus("⏸ Je vous attends. Prenez votre temps, puis appuyez sur 🎤 Répondre."); return; }
+      heard.textContent = "Compris : « " + r.text + " »";
+      const c = compareWords(expected, [r.text, ...(r.alternatives || [])]);
+      const ratio = c.total ? c.ok / c.total : 0;
+      if (ratio >= 0.75) {
+        grade(tries === 0 ? 3 : 2);
+        answerBox.classList.remove("hidden");
+        setStatus("✅ Bravo !");
+        await speak(PRAISE[Math.floor(Math.random() * PRAISE.length)], { charId: "alex" });
+        if (my === token && isAlive()) setTimeout(() => { if (my === token) next(); }, 700);
+      } else {
+        tries++;
+        answerBox.classList.remove("hidden");
+        if (tries >= 2) grade(1);
+        setStatus(ratio >= 0.4 ? "🙂 Presque ! Écoutez et répétez." : "Écoutez la bonne réponse et répétez-la.");
+        await speakFr(ratio >= 0.4 ? "Presque ! Écoutez." : "Écoutez bien.");
+        if (my !== token) return;
+        await speak(expected, { rate: 0.7 });
+        if (my !== token || !isAlive()) return;
+        if (tries >= 3) { setStatus("On passe à la suite, cette expression reviendra bientôt."); setTimeout(() => { if (my === token) next(); }, 1200); return; }
+        hear();
+      }
+    };
+    const dontKnow = async () => {
+      stopAll(); const my = ++token;
+      grade(1); tries = 2;
+      answerBox.classList.remove("hidden");
+      setStatus("Pas de souci ! Écoutez et répétez.");
+      await speakFr("Pas de souci. Écoutez et répétez.");
+      if (my !== token) return;
+      await speak(expected, { rate: 0.7 });
+      if (my === token && isAlive()) hear();
+    };
+    const micBtn = btn("🎤 Répondre", () => hear(), "btn huge primary");
+    const front = reply
+      ? h("div", {}, h("div", { class: "q" }, "💬 Répondez à Sarah :"), h("div", { class: "big-en" }, reply.q[1]), h("div", { class: "small muted" }, reply.q[2] || ""))
+      : h("div", {}, h("div", { class: "q" }, "🗣 Comment dit-on en anglais :"), h("div", { class: "big-fr" }, it.fr), it.emoji ? h("div", { class: "emoji-big" }, it.emoji) : null);
+    wrap.replaceChildren(
+      h("div", { class: "progress-dots" }, `Question ${done + 1} · encore ${queue.length} après celle-ci`),
+      h("div", { class: "card flash" }, front, status, heard, micBtn,
+        h("div", { class: "row wrap" },
+          btn("🔊 Réécouter la question", () => ask(), "btn"),
+          btn("💡 Je ne sais pas", () => dontKnow(), "btn"),
+          btn("⏭ Suivant", () => next(), "btn ghost")),
+        answerBox));
+    setTimeout(() => { if (isAlive()) ask(); }, 300);
   };
   next();
   return wrap;

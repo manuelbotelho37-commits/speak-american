@@ -81,6 +81,22 @@ export function speak(text, { rate, charId = "alex", onend, onstart } = {}) {
     setTimeout(next, 60);
   });
 }
+// Phrase en français (consignes d'Alex pendant la révision orale)
+export function speakFr(text) {
+  return new Promise(resolve => {
+    if (!synth || !text) return resolve(false);
+    stopSpeaking();
+    const token = speakingToken;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "fr-FR";
+    const fr = voices.filter(v => /^fr[-_]FR/i.test(v.lang)).sort((a, b) => (/(natural|neural|google)/i.test(b.name) ? 1 : 0) - (/(natural|neural|google)/i.test(a.name) ? 1 : 0))[0];
+    if (fr) u.voice = fr;
+    u.rate = Math.max(0.6, Math.min(1.3, (get().settings.speed ?? 0.8) + 0.15));
+    u.onend = () => resolve(token === speakingToken);
+    u.onerror = () => resolve(false);
+    setTimeout(() => synth.speak(u), 60);
+  });
+}
 export function stopSpeaking() { speakingToken++; try { synth?.cancel(); } catch {} }
 
 // ---------- Reconnaissance vocale ----------

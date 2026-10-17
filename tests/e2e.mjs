@@ -16,6 +16,13 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, a
 const page = await ctx.newPage();
 page.setDefaultTimeout(15000);
 // code d'accès (comme le ferait l'utilisateur dans Réglages)
+// Faux micro : renvoie window.__fakeSay (ou « rien entendu »)
+await page.addInitScript(() => {
+  class FakeSR { start() { setTimeout(() => { const t = window.__fakeSay; if (!t) { this.onerror?.({ error: "no-speech" }); this.onend?.(); return; }
+    const res = [[{ transcript: t }]]; res[0].isFinal = true; this.onresult?.({ results: res }); setTimeout(() => this.onend?.(), 50); }, 300); }
+    stop() { this.onend?.(); } abort() { this.onend?.(); } }
+  window.SpeechRecognition = FakeSR; window.webkitSpeechRecognition = FakeSR;
+});
 await page.addInitScript(() => { if (!localStorage.getItem("speak-american:v1")) localStorage.setItem("speak-american:v1", JSON.stringify({ settings: { accessCode: "1234" } })); });
 const errors = [];
 page.on("pageerror", e => errors.push("pageerror: " + e.message));
@@ -106,9 +113,24 @@ step("Révision : simuler le lendemain (mots dus)");
 await editState(() => { const s = JSON.parse(localStorage.getItem("speak-american:v1")); for (const c of Object.values(s.cards)) c.due = Date.now() - 1000; localStorage.setItem("speak-american:v1", JSON.stringify(s)); });
 await page.reload();
 console.log("    bouton :", (await page.locator(".big3").nth(2).textContent())); await page.locator(".big3").nth(2).click();
+step("Révision orale : Alex pose la question, on répond au micro");
+await page.locator(".oral-review .big-fr").first().waitFor();
+const expected = await page.locator(".oral-review .reveal .big-en").first().textContent();
+await page.evaluate((t) => { window.__fakeSay = t; }, expected.replace("🔊", "").trim());
+await click("🎤 Répondre");
+await page.getByText("✅ Bravo !").waitFor({ timeout: 20000 });
+await page.screenshot({ path: `${OUT}/08-revision-orale.png` });
+await page.evaluate(() => { window.__fakeSay = "banana"; });
+await page.waitForFunction(() => /Question 2/.test(document.querySelector(".oral-review .progress-dots")?.textContent || ""), null, { timeout: 20000 });
+await click("💡 Je ne sais pas");
+await page.getByText(/Écoutez et répétez/).first().waitFor();
+await page.evaluate(() => { window.__fakeSay = ""; });
+step("Révision en mode cartes");
+await click("🃏 Passer en mode cartes");
 await click("👁 Voir la réponse"); await click("😣 Oublié");
 await click("👁 Voir la réponse"); await click("🙂 Bien");
 await page.screenshot({ path: `${OUT}/08-revision.png` });
+await click("🎤 Passer en mode oral");
 
 step("Conversation conservée après rotation / rechargement");
 await page.goto(URL0 + "#/parler");
