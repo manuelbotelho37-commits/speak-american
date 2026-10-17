@@ -64,10 +64,54 @@ export function conversationView(config) {
     list.scrollTop = list.scrollHeight;
     const la = lastAssistant();
     sugBox.replaceChildren();
-    if (la?.showSug && la.suggestions?.length) {
-      sugBox.append(h("div", { class: "muted small" }, "Vous pourriez répondre :"), ...la.suggestions.map(s => btn(h("span", {}, s.en, s.fr ? h("small", { class: "muted" }, " — " + s.fr) : null), () => { speak(s.en, { rate: 0.85 }); input.value = s.en; conv.helpUsed = true; }, "chip")));
-    }
+    const lastMsg = conv.history[conv.history.length - 1];
+    if (la && lastMsg === la && la.suggestions?.length) { const cp = choicePanel(la); sugBox.append(cp); setTimeout(() => cp.scrollIntoView({ behavior: "smooth", block: "end" }), 60); }
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 30);
+  }
+
+  // 3 réponses proposées : on touche (vert / rouge en dialogue guidé), puis on la dit au micro.
+  function choicePanel(la) {
+    const sugs = la.suggestions.slice(0, 3);
+    const box = h("div", { class: "choice-panel" });
+    const say = h("div", {});
+    const btns = sugs.map((sg, i) => h("button", { type: "button", class: "btn opt-btn", onClick: () => pick(i) },
+      h("span", { class: "opt-en" }, "💬 ", sg.en), sg.fr ? h("small", { class: "opt-fr" }, sg.fr) : null));
+    let tries = 0;
+    const pick = (i) => {
+      const sg = sugs[i];
+      handsFree = false; try { listener?.abort?.(); } catch {} updateMic();
+      btns.forEach(b => b.classList.remove("ok", "ko", "sel"));
+      if (sugs.some(x => x.ok !== undefined)) { // dialogue guidé : une seule bonne réponse
+        const good = sugs.findIndex(x => x.ok);
+        btns[good].classList.add("ok");
+        if (!sg.ok) { btns[i].classList.add("ko"); say.replaceChildren(h("div", { class: "wg-fb ko" }, "❌ Ce n'est pas la bonne réponse. Touchez celle en vert.")); speak(sugs[good].en, { rate: 0.85 }); return; }
+      } else btns[i].classList.add("sel");
+      conv.helpUsed = true;
+      sayIt(sg.en);
+    };
+    const sayIt = async (text) => {
+      say.replaceChildren(h("div", { class: "wg-hint" }, "🔊 Écoutez…"));
+      try { await Promise.race([speak(text, { rate: 0.85 }), new Promise(r => setTimeout(r, 4000))]); } catch {}
+      if (!alive || !box.isConnected) return;
+      if (!support.stt) { say.replaceChildren(btn("➤ Envoyer cette réponse", () => userSays(text, false), "btn primary")); return; }
+      say.replaceChildren(h("div", { class: "wg-hint live" }, "🎤 À vous ! Dites-la à voix haute…"));
+      const r = await listenOnce();
+      if (!alive || !box.isConnected) return;
+      if (!r) { say.replaceChildren(btn("🎤 Je la dis", () => sayIt(text), "btn primary"), btn("➤ Envoyer sans parler", () => userSays(text, false), "btn ghost")); return; }
+      if (!r.text) { say.replaceChildren(h("div", { class: "wg-hint" }, "⏸ Je vous attends. Touchez le micro quand vous êtes prêt."), h("div", { class: "row wrap" }, btn("🎤 Je la dis", () => sayIt(text), "btn primary"), btn("➤ Envoyer sans parler", () => userSays(text, false), "btn ghost"))); return; }
+      const cmp = compareWords(text, [r.text, ...(r.alternatives || [])]);
+      const words = h("div", { class: "words big" }, cmp.words.map(w => h("span", { class: w.ok ? "w ok" : "w ko" }, w.w, " ")));
+      if (cmp.total && cmp.ok / cmp.total >= 0.6) {
+        say.replaceChildren(h("div", { class: "wg-fb ok" }, "✅ Bien dit !"), words);
+        setTimeout(() => { if (alive) userSays(text, false); }, 900);
+      } else {
+        tries++;
+        say.replaceChildren(h("div", { class: "wg-fb ko" }, "❌ Pas tout à fait. Les mots en rouge sont à redire."), words,
+          h("div", { class: "row wrap" }, btn("🎤 Réessayer", () => sayIt(text), "btn primary"), tries >= 2 ? btn("➤ Envoyer quand même", () => userSays(text, false), "btn ghost") : null));
+      }
+    };
+    box.append(h("div", { class: "choice-title" }, "👉 Touchez votre réponse, puis dites-la :"), h("div", { class: "opts" }, btns), say);
+    return box;
   }
 
   function bubble(m, i) {
@@ -154,10 +198,16 @@ export function conversationView(config) {
   }
 
   // ---------- Dialogue guidé (sans IA) ----------
+  function guidedChoices(step) {
+    const good = { en: personalize(step.sug), fr: personalize(step.sugFr), ok: true };
+    const others = Object.values(GUIDED).flatMap(g => g.steps).filter(x => x.sug && !step.keys.some(k => x.sug.toLowerCase().includes(k)));
+    const uniq = [...new Map(others.map(x => [x.sug, x])).values()].sort(() => Math.random() - 0.5).slice(0, 2);
+    return [good, ...uniq.map(x => ({ en: personalize(x.sug), fr: personalize(x.sugFr), ok: false }))].sort(() => Math.random() - 0.5);
+  }
   async function guidedNext() {
     const step = guided.steps[conv.step];
     if (!step) { await characterSays({ role: "assistant", text: "That's it! Great job!", fr: "C'est fini ! Bravo !" }); setStatus("Dialogue terminé. Appuyez sur TERMINER ou recommencez."); handsFree = false; updateMic(); return; }
-    await characterSays({ role: "assistant", text: personalize(step.en), fr: personalize(step.fr), suggestions: [{ en: personalize(step.sug), fr: personalize(step.sugFr) }], showSug: conv.level === "debutant" && conv.step === 0 });
+    await characterSays({ role: "assistant", text: personalize(step.en), fr: personalize(step.fr), suggestions: guidedChoices(step) });
   }
   async function guidedAnswer(text) {
     const step = guided.steps[conv.step];

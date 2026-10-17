@@ -97,6 +97,16 @@ await page.screenshot({ path: `${OUT}/03-conversation.png` });
 await page.getByPlaceholder(/Ou écrivez votre réponse/).fill("I'm from France.");
 await page.keyboard.press("Enter");
 await page.waitForFunction(() => document.querySelectorAll(".msg.them").length >= 2);
+// 3 réponses proposées : on touche, puis on la dit
+await page.waitForFunction(() => document.querySelectorAll(".choice-panel .opt-btn").length === 3);
+await page.setViewportSize({ width: 412, height: 915 }); await page.waitForTimeout(500);
+await page.screenshot({ path: `${OUT}/03m-conversation-choix.png` });
+await page.setViewportSize({ width: 1280, height: 900 });
+await page.evaluate(() => { window.__fakeSay = "From Lyon"; });
+await page.locator(".choice-panel .opt-btn", { hasText: "From Lyon." }).click();
+await page.getByText("✅ Bien dit !").waitFor();
+await page.waitForFunction(() => document.querySelectorAll(".msg.them").length >= 3);
+await page.screenshot({ path: `${OUT}/03b-conversation-choix.png` });
 await click(/TERMINER/);
 await page.getByText("Bonne conversation.").waitFor();
 await page.screenshot({ path: `${OUT}/04-bilan.png` });

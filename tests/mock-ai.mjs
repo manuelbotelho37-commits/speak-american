@@ -14,7 +14,7 @@ export function startMock(port = 8799) {
       else if (sys.includes("remember an American")) out = { simple_fr: "bonjour", association_fr: "Hello = « allô » au téléphone", sound_tip_fr: "Soufflez le H" };
       else {
         const last = body.messages[body.messages.length - 1].content;
-        out = { reply: "Nice! And where are you from?", reply_fr: "Super ! Et d'où viens-tu ?", correction: /i am agree/i.test(last) ? { needed: true, original: "I am agree", better: "I agree", explanation_fr: "On dit « I agree »." } : { needed: false, original: "", better: "", explanation_fr: "" }, suggestions: [{ en: "I'm from France.", fr: "Je viens de France." }, { en: "From Lyon.", fr: "De Lyon." }], used_words: ["hello"], coach_fr: "" };
+        out = { reply: "Nice! And where are you from?", reply_fr: "Super ! Et d'où viens-tu ?", correction: /i am agree/i.test(last) ? { needed: true, original: "I am agree", better: "I agree", explanation_fr: "On dit « I agree »." } : { needed: false, original: "", better: "", explanation_fr: "" }, suggestions: [{ en: "I'm from France.", fr: "Je viens de France." }, { en: "From Lyon.", fr: "De Lyon." }, { en: "I live in Paris.", fr: "J'habite à Paris." }], used_words: ["hello"], coach_fr: "" };
       }
       resp.writeHead(200, { "content-type": "application/json" });
       resp.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }));

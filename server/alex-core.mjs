@@ -41,15 +41,16 @@ Rules:
 - If the learner makes a mistake, the character continues naturally (no lecture inside "reply"); the correction goes in the "correction" field, explained in simple French by Alex the teacher.
 - Only flag real mistakes that matter for being understood or sounding natural. Do not correct missing punctuation or capitals. If the sentence is fine, correction.needed = false.
 - Reuse the target words when natural. Be kind, positive and honest.
+- ALWAYS give EXACTLY 3 suggestions: 3 different, correct, natural answers the learner could say right now to your reply (the learner taps one, then says it aloud). Keep them short and as simple as the stage requires.
 - Never ask for sensitive personal data (health, money, address, passwords).
 Answer ONLY with a JSON object with exactly these keys:
-{"reply": "what the character says (English)", "reply_fr": "natural French translation of reply", "correction": {"needed": true|false, "original": "learner's sentence", "better": "corrected/more natural American version", "explanation_fr": "short simple explanation in French"}, "suggestions": [{"en": "a possible short answer the learner could say next", "fr": "its French translation"}, {"en": "...", "fr": "..."}], "used_words": ["target words the learner used correctly in their LAST message"], "coach_fr": "optional very short tip or encouragement in French, or empty string"}`;
+{"reply": "what the character says (English)", "reply_fr": "natural French translation of reply", "correction": {"needed": true|false, "original": "learner's sentence", "better": "corrected/more natural American version", "explanation_fr": "short simple explanation in French"}, "suggestions": [{"en": "a possible short answer the learner could say next", "fr": "its French translation"}, {"en": "...", "fr": "..."}, {"en": "...", "fr": "..."}], "used_words": ["target words the learner used correctly in their LAST message"], "coach_fr": "optional very short tip or encouragement in French, or empty string"}`;
 
 const ACTIONS = {
   start: "(The conversation starts now. Greet the learner in character, set the scene in one short sentence, and ask a first easy question.)",
   continue: "(The learner wants you to continue: keep the conversation going with a new, related question.)",
   not_understood: "(The learner did NOT understand your last message. Rephrase it much more simply and slowly, with simpler words. Put a short helpful explanation in coach_fr.)",
-  help_answer: "(The learner asks for help to answer. Repeat your question briefly and give 2 easy example answers in suggestions.)",
+  help_answer: "(The learner asks for help to answer. Repeat your question briefly and give 3 easy example answers in suggestions.)",
   correct: "(The learner asks you to check their last sentence carefully: fill correction with the most natural American version, even for small improvements. In reply, briefly encourage them to say the better version.)",
 };
 

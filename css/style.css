@@ -322,3 +322,12 @@ body.focus-on .bottomnav{display:none}
 .check-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;padding:12px 4px;cursor:pointer;border-radius:8px}
 .check-row:hover,.check-row:focus-visible{background:var(--surface-2)}
 .check-row .grow{flex:1}.check-row .go{color:var(--primary);font-size:1.1rem}
+/* Conversation : 3 réponses à toucher puis à dire */
+.choice-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:8px 0}
+.choice-title{font-weight:700;color:var(--primary-2)}
+.choice-panel .opt-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%}
+.choice-panel .opt-en{font-size:1.2rem;font-weight:700}.choice-panel .opt-fr{color:var(--muted);font-size:.95rem}
+.opt-btn.sel{border-color:var(--primary);background:#33301f}
+.suggestions{width:100%}
+.choice-panel{width:100%;max-width:640px;scroll-margin-bottom:170px}
+body.focus-on .chat-controls{bottom:0}

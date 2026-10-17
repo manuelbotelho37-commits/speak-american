@@ -37,7 +37,7 @@ r = await handleAlex(req("POST", { mode: "chat" }), {}); assert.equal(r.status, 
 r = await handleAlex(req("POST", { mode: "chat" }, "mauvais"), env); assert.equal(r.status, 401); ok("Mauvais code d'accès refusé (401)");
 r = await handleAlex(req("GET"), env); assert.equal((await r.json()).configured, true);
 r = await handleAlex(req("POST", { mode: "chat", character: "michael", level: "debutant", month: 1, history: [{ role: "user", text: "I am agree" }], targetWords: ["Hello"] }), env);
-let j = await r.json(); assert.equal(r.status, 200); assert.ok(j.reply); assert.equal(j.correction.needed, true); assert.equal(j.suggestions.length, 2);
+let j = await r.json(); assert.equal(r.status, 200); assert.ok(j.reply); assert.equal(j.correction.needed, true); assert.equal(j.suggestions.length, 3);
 const last = calls[calls.length - 1];
 assert.equal(last.auth, "Bearer k-secret", "la clé est envoyée par le serveur seulement");
 assert.ok(last.body.messages[0].content.includes("Michael"));
