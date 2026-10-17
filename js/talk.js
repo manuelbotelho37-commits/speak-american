@@ -380,7 +380,11 @@ export function conversationView(config) {
   // Les 3 réponses sont collées en bas, au-dessus du micro : la question de Sarah reste visible juste au-dessus.
   root = h("div", { class: "chat" }, head, banner, goal, targetsBox, list, statusLine,
     h("div", { class: "chat-controls" }, sugBox, micBtn, h("div", { class: "input-row" }, input, sendBtn)),
-    h("div", { class: "assist" }, assists.map(([l, a]) => btn(l, () => runAction(a), a === "end" ? "btn assist-btn end" : "btn assist-btn"))));
+    // Écran épuré : seulement « Terminer ». Les autres aides sont rangées derrière « ⋯ Plus d'aide » (Sarah a déjà 🔊 🐢 🇫🇷 sur sa bulle).
+    h("div", { class: "row assist-mini" },
+      btn("⋯ Plus d'aide", (e) => { const a = root.querySelector(".assist"); a.hidden = !a.hidden; }, "btn ghost sm"),
+      btn("🏁 TERMINER", () => runAction("end"), "btn sm end-mini")),
+    h("div", { class: "assist", hidden: true }, assists.filter(([, a]) => a !== "end").map(([l, a]) => btn(l, () => runAction(a), "btn assist-btn"))));
 
   root.cleanup = () => { const wasAlive = alive; alive = false; handsFree = false; clearInterval(tick); listener?.abort?.(); stopSpeaking(); if (wasAlive) persist(); };
 

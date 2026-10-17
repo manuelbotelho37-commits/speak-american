@@ -338,3 +338,7 @@ body.focus-on .bottomnav{display:none}
 .chat.has-choices .mic-btn{min-height:44px;font-size:.95rem;background:var(--surface-2);color:var(--text);border-color:var(--border)}
 .chat.has-choices .chat-list{max-height:34vh;min-height:120px}
 body.focus-on .chat-controls{bottom:0}
+.assist-mini{justify-content:space-between;gap:8px}
+.assist-mini .btn{min-height:40px;padding:6px 14px}
+.end-mini{border-color:var(--accent)}
+.assist[hidden]{display:none}

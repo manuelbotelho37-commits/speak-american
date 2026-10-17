@@ -91,6 +91,7 @@ await page.getByPlaceholder(/Ou écrivez votre réponse/).fill("Hello Sarah, I a
 await page.keyboard.press("Enter");
 await page.getByText("Nice! And where are you from?").first().waitFor();
 await page.getByText("✔ I agree").waitFor();
+await click(/Plus d.aide/);
 await click(/AIDE-MOI À RÉPONDRE/);
 await page.getByText("I'm from France.").first().waitFor();
 await page.screenshot({ path: `${OUT}/03-conversation.png` });
