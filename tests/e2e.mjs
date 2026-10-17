@@ -59,10 +59,29 @@ await page.getByText("Étape terminée, bravo !").waitFor();
 await page.screenshot({ path: `${OUT}/02b-pause.png` });
 await click(/▶️ Continuer :/);
 step("Nouveaux mots");
-for (let i = 0; i < 5; i++) { await page.locator(".word .big-en").waitFor(); if (i === 0) await page.screenshot({ path: `${OUT}/02-mot.png` });
-await page.setViewportSize({ width: 412, height: 915 });
-await page.screenshot({ path: `${OUT}/02m-mot-plein-ecran.png` });
-await page.setViewportSize({ width: 1280, height: 900 }); await click("J'ai compris ➜"); }
+for (let i = 0; i < 5; i++) {
+  const phone = async (name) => { if (i) return; await page.setViewportSize({ width: 412, height: 915 }); await page.screenshot({ path: `${OUT}/${name}.png` }); await page.setViewportSize({ width: 1280, height: 900 }); };
+  const stageOn = (n) => page.waitForFunction((n) => document.querySelectorAll(".word-games .steps4 span.on").length === n, n);
+  await stageOn(1); if (i === 0) await page.screenshot({ path: `${OUT}/02-mot.png` }); await phone("02m-mot-1-ecoute");
+  await page.locator(".wg-next").click();
+  await stageOn(2);
+  if (i === 0) {
+    const phrase = (await page.locator(".wg-word").innerText()).replace(/🔊/g, "").trim();
+    await page.evaluate((t) => { window.__fakeSay = t; }, phrase);
+    await page.getByRole("button", { name: "Je la dis" }).click();
+    await page.getByText("✅ Bien dit !").waitFor();
+    await phone("02m-mot-2-repete");
+  }
+  await page.locator(".wg-next").click();
+  await stageOn(3);
+  await page.locator(".word-games .opt-btn").first().click();
+  if (await page.locator(".word-games .opt-btn.ko").count()) { await phone("02m-mot-3-sens"); await page.locator(".wg-next").click(); }
+  await stageOn(4);
+  if (await page.locator(".tiles .tile").count()) await page.locator(".tiles .tile").first().click();
+  if (!(await page.locator(".tiles .tile").count()) && await page.locator(".word-games .opt-btn").count()) await page.locator(".word-games .opt-btn").first().click();
+  await page.locator(".wg-next").waitFor(); await phone("02m-mot-4-utilise");
+  await page.locator(".wg-next").click();
+}
 for (let i = 0; i < 5; i++) { await page.locator(".choice-btn").first().click(); await click("Suivant ➜"); }
 await click(/Continuer : parler avec Sarah/);
 await click(/▶️ Continuer :/);

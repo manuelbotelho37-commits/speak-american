@@ -294,3 +294,27 @@ body.focus-on .update-banner{bottom:16px}
 .lesson-area.focus .focus-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:3;background:var(--bg);padding:max(12px,env(safe-area-inset-top)) 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px}
 .focus-title{color:var(--primary-2,#bea15d);font-weight:700;font-size:1.05rem}
 body.focus-on .bottomnav{display:none}
+/* Apprendre un mot : 4 petits jeux */
+.word-games{display:flex;flex-direction:column;gap:12px;min-height:calc(100vh - 110px)}
+.wg-top{justify-content:space-between}
+.steps4{display:flex;gap:6px}.steps4 span{flex:1;height:7px;border-radius:7px;background:var(--surface-2)}.steps4 span.on{background:#bea15d}
+.wg-screen{display:flex;flex-direction:column;gap:12px;flex:1}
+.wg-pic{font-size:4.5rem;text-align:center;line-height:1.1;margin-top:8px}
+.wg-word{font-size:2rem;font-weight:800;text-align:center;line-height:1.2}
+.wg-ph{color:#d4b876;font-size:1.25rem;font-weight:700;text-align:center}
+.wg-fr{color:var(--muted);font-size:1.2rem;text-align:center}
+.round-big{align-self:center;width:120px;height:120px;border-radius:50%;border:none;background:#bea15d;color:#111;font-size:3.2rem;cursor:pointer;box-shadow:0 0 0 10px rgba(190,161,93,.18);margin:8px 0}
+.round-big:active{transform:scale(.96)}
+.wg-hint{background:var(--surface);border-left:4px solid #bea15d;border-radius:10px;padding:10px 12px}
+.wg-hint.live{border-left-color:#5fae7a}
+.wg-fb{border-radius:14px;padding:12px;font-size:1.15rem;font-weight:700;text-align:center;border:2px solid}
+.wg-fb.ok{border-color:#5fae7a;background:#1f3328;color:#e7f5ec}.wg-fb.ko{border-color:var(--accent);background:#3a2324;color:#f7e3e3}
+.wg-next{margin-top:auto;width:100%}
+.wg-sent{font-size:1.7rem;font-weight:800;text-align:center;line-height:1.6}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.tile{font-size:1.3rem;font-weight:700;padding:10px 16px;border:2px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.tile.slot{background:transparent;border-style:dashed}
+.tile.ok{border-color:#5fae7a;background:#1f3328;color:#e7f5ec;opacity:1}.tile.ko{border-color:var(--accent);background:#3a2324;color:#f7e3e3;opacity:1}
+.wg-foot{text-align:center}
+.words.big{font-size:1.4rem;text-align:center}
+.center{text-align:center}

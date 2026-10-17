@@ -263,6 +263,143 @@ function oralReview(ids, onEnd, onCards) {
 }
 
 // ====================== Carte d'un nouveau mot ======================
+// ====================== Apprendre un mot : 4 petits jeux, un seul bouton à la fois ======================
+const STOP = new Set(["the","a","an","is","are","am","i","i'm","you","to","of","and","it","my","your","me","do","in","on","at"]);
+function blankFor(it) {
+  // Phrase à compléter : la réponse B du mini-dialogue (sinon l'exemple), avec un mot-clé de l'expression caché.
+  const ctx = Array.isArray(it.dlg) && it.dlg[0] ? it.dlg[0][1] : null;
+  const toks = clean(it.en).replace(/[,;:"]/g, "").split(/\s+/).filter(Boolean);
+  const keys = toks.filter(w => w.length > 2 && !STOP.has(w.toLowerCase())).sort((a, b) => b.length - a.length);
+  const all = keys.length ? keys : toks;
+  for (const sent of [Array.isArray(it.dlg) && it.dlg[1]?.[1], it.ex].filter(Boolean)) {
+    const words = sent.split(/\s+/);
+    const bare = (w) => w.replace(/[.…!?,;:"]/g, "").toLowerCase();
+    for (const k of all) {
+      const idx = words.findIndex(w => bare(w) === k.toLowerCase());
+      if (idx >= 0) return { ctx: sent === it.ex ? null : ctx, before: words.slice(0, idx).join(" "), after: words.slice(idx + 1).join(" "), answer: words[idx].replace(/[.…!?,;:"]/g, ""), punct: words[idx].replace(/^[^.…!?,;:"]*/, ""), sent };
+    }
+  }
+  return null;
+}
+function wordGames(it, num, total, onDone) {
+  const wrap = h("div", { class: "word-games" });
+  let stage = 0, token = 0, listener = null;
+  const alive = () => wrap.isConnected;
+  const stop = () => { token++; try { listener?.abort?.(); } catch {} listener = null; stopSpeaking(); };
+  const bar = () => h("div", { class: "steps4" }, [0, 1, 2, 3].map(k => h("span", { class: k <= stage ? "on" : "" })));
+  const top = () => h("div", { class: "row wg-top" }, h("span", { class: "muted" }, `Mot ${num} / ${total}`));
+  const hint = (t) => h("div", { class: "wg-hint" }, "👉 ", t);
+  const nextBtn = (label = "Suivant ➜") => btn(label, () => { stop(); stage++; draw(); }, "btn huge primary wg-next");
+  const fb = (ok, text) => h("div", { class: "wg-fb " + (ok ? "ok" : "ko") }, text);
+  const hard = btn("⭐ Ce mot est difficile", (e) => { markDifficult(it.id, true); e.currentTarget.textContent = "⭐ Il reviendra plus souvent"; }, "btn ghost sm");
+
+  function draw() {
+    stop();
+    if (stage > 3) { onDone(); return; }
+    const scr = h("div", { class: "wg-screen" });
+    wrap.replaceChildren(top(), bar(), scr, h("div", { class: "wg-foot" }, hard));
+    [listenGame, repeatGame, meaningGame, useGame][stage](scr);
+  }
+
+  // 1. J'écoute
+  function listenGame(scr) {
+    let taps = 0;
+    const play = () => { taps++; speak(it.en, taps % 2 === 0 ? { rate: 0.6 } : {}); };
+    scr.append(h("div", { class: "wg-pic" }, it.emoji || "💬"), h("div", { class: "wg-word" }, it.en), h("div", { class: "wg-ph" }, it.ph), h("div", { class: "wg-fr" }, it.fr),
+      h("button", { type: "button", class: "round-big", "aria-label": "Écouter", onClick: play }, "🔊"),
+      h("div", { class: "small muted center" }, "🐢 Touchez encore : plus lentement"),
+      hint("Touchez le haut-parleur doré pour écouter, puis « Suivant »."),
+      it.tip ? h("div", { class: "tip" }, "🧠 ", it.tip) : null, nextBtn());
+    setTimeout(() => { if (alive() && stage === 0) play(); }, 300);
+  }
+
+  // 2. Je répète
+  function repeatGame(scr) {
+    const phrase = it.ex && it.ex.split(/\s+/).length <= 6 ? it.ex : it.en;
+    const out = h("div", {});
+    const go = async () => {
+      if (!support.stt) { out.replaceChildren(fb(false, sttErrorFr("unsupported"))); return; }
+      const my = ++token;
+      out.replaceChildren(h("div", { class: "wg-hint" }, "🔊 Écoutez…"));
+      try { await Promise.race([speak(phrase, { rate: 0.85 }), new Promise(r => setTimeout(r, 4000))]); } catch {}
+      if (my !== token || !alive()) return;
+      out.replaceChildren(h("div", { class: "wg-hint live" }, "🎤 À vous ! Dites la phrase…"));
+      try {
+        listener = listen({ silenceMs: 1500 });
+        const r = await listener.promise;
+        if (my !== token || !alive()) return;
+        const cmp = compareWords(phrase, [r.text, ...(r.alternatives || [])]);
+        const good = cmp.total ? cmp.ok / cmp.total >= 0.6 : false;
+        const words = h("div", { class: "words big" }, cmp.words.map(w => h("span", { class: w.ok ? "w ok" : "w ko" }, w.w, " ")));
+        if (good) { setSkill(it.id, "pronounced"); out.replaceChildren(fb(true, "✅ Bien dit !"), words); }
+        else out.replaceChildren(fb(false, "❌ Pas tout à fait. Les mots en rouge sont à redire."), words, h("div", { class: "small muted" }, "Compris : « " + (r.text || "rien") + " »"), btn("🎤 Réessayer", go, "btn"));
+      } catch (e) { if (my === token && alive()) out.replaceChildren(fb(false, e.code === "no-speech" ? "⏸ Je n'ai rien entendu. Touchez le micro quand vous êtes prêt." : sttErrorFr(e.code)), btn("🎤 Réessayer", go, "btn")); }
+    };
+    scr.append(h("div", { class: "wg-word" }, phrase, " ", speakIcon(phrase)), phrase === it.en ? h("div", { class: "wg-ph" }, it.ph) : h("div", { class: "wg-fr" }, it.exFr || ""),
+      h("button", { type: "button", class: "round-big mic", "aria-label": "Je la dis", onClick: go }, "🎤"),
+      hint("Touchez le micro, écoutez, puis dites la phrase."), out, nextBtn());
+  }
+
+  // 3. Je trouve le sens
+  function meaningGame(scr) {
+    const choices = shuffle([it, ...distractors(it, 2, "fr")]);
+    const status = h("div", {});
+    const btns = choices.map(c => h("button", { type: "button", class: "btn opt-btn", onClick: () => pick(c) }, (c.emoji || "💬") + "  " + c.fr));
+    const pick = (c) => {
+      btns.forEach(b => b.disabled = true);
+      const ok = c.id === it.id;
+      btns[choices.indexOf(it)].classList.add("ok");
+      if (!ok) btns[choices.indexOf(c)].classList.add("ko");
+      if (ok) setSkill(it.id, "understood");
+      status.replaceChildren(fb(ok, ok ? "✅ Bravo !" : "❌ Raté. La bonne réponse est en vert."), nextBtn());
+      if (ok) setTimeout(() => { if (alive() && stage === 2) { stage++; draw(); } }, 1400);
+    };
+    scr.append(h("div", { class: "muted" }, "🎧 Que veut dire :"), h("div", { class: "wg-word" }, it.en, " ", speakIcon(it.en)),
+      h("div", { class: "opts" }, btns), hint("Touchez la bonne traduction."), status);
+    setTimeout(() => { if (alive() && stage === 2) speak(it.en); }, 300);
+  }
+
+  // 4. Je l'utilise
+  function useGame(scr) {
+    const b = blankFor(it);
+    const status = h("div", {});
+    const finish = (sent) => { speak(sent); status.replaceChildren(fb(true, "🎉 Parfait ! Mot appris."), nextBtn(num < total ? "Mot suivant ➜" : "Terminer ➜")); };
+    if (!b) { // pas de phrase à compléter : « Comment dit-on… ? » avec 3 réponses en anglais
+      const choices = shuffle([it, ...distractors(it, 2, "en")]);
+      const btns = choices.map(c => h("button", { type: "button", class: "btn opt-btn", onClick: () => {
+        btns.forEach(x => x.disabled = true);
+        btns[choices.indexOf(it)].classList.add("ok");
+        if (c.id === it.id) { setSkill(it.id, "usedSpont"); finish(it.en); }
+        else { btns[choices.indexOf(c)].classList.add("ko"); speak(it.en); status.replaceChildren(fb(false, "❌ Raté. La bonne réponse est en vert."), nextBtn(num < total ? "Mot suivant ➜" : "Terminer ➜")); }
+      } }, "💬  " + c.en));
+      scr.append(h("div", { class: "muted" }, "🧩 Comment dit-on :"), h("div", { class: "wg-word" }, it.fr), h("div", { class: "opts" }, btns), hint("Touchez la bonne phrase en anglais."), status);
+      return;
+    }
+    const pool = shuffle(allItemsUpTo(Math.max(currentDay(), 14)).concat(VOCAB).flatMap(x => clean(x.en).split(/\s+/)).filter(w => w.length > 2 && w.toLowerCase() !== b.answer.toLowerCase() && !STOP.has(w.toLowerCase())));
+    const opts = shuffle([b.answer, ...[...new Set(pool)].slice(0, 2)]);
+    const slot = h("span", { class: "tile slot" }, "____");
+    const tiles = opts.map(w => h("button", { type: "button", class: "btn tile", onClick: () => pick(w) }, w));
+    const pick = (w) => {
+      tiles.forEach(t => t.disabled = true);
+      const ok = w === b.answer;
+      tiles[opts.indexOf(b.answer)].classList.add("ok");
+      slot.textContent = b.answer; slot.classList.add(ok ? "ok" : "ko");
+      if (!ok) { tiles[opts.indexOf(w)].classList.add("ko"); }
+      if (ok) setSkill(it.id, "usedSpont");
+      if (ok) finish(b.sent);
+      else { speak(b.sent); status.replaceChildren(fb(false, "❌ Raté. Le bon mot est en vert."), nextBtn(num < total ? "Mot suivant ➜" : "Terminer ➜")); }
+    };
+    scr.append(b.ctx ? h("div", { class: "av-line" }, h("span", { class: "av-dot" }, "👩"), " Sarah : ", b.ctx, " ", speakIcon(b.ctx, "sarah")) : null,
+      h("div", { class: "muted" }, "🧩 Complétez votre réponse :"),
+      h("div", { class: "wg-sent" }, b.before ? b.before + " " : "", slot, b.punct || "", b.after ? " " + b.after : ""),
+      h("div", { class: "tiles" }, tiles), hint("Touchez le mot qui manque."), status);
+    if (b.ctx) setTimeout(() => { if (alive() && stage === 3) speak(b.ctx); }, 300);
+  }
+
+  draw();
+  return wrap;
+}
+
 export function wordCard(it, { onNext, compact = false } = {}) {
   const c = getCard(it.id);
   const skillsBox = h("div", { class: "skills" });
@@ -401,7 +538,6 @@ export function lessonPage(dayN, nav) {
 
   // --- 2. Nouveaux mots ---
   function stepNew() {
-    body.append(h("h2", {}, "✨ Nouveaux mots"));
     if (needsContent(dayN) && !get().generated[dayN]) return contentGenerator();
     let ids = ds.newIds;
     if (!ids || !ids.length) {
@@ -413,13 +549,12 @@ export function lessonPage(dayN, nav) {
     if (!ids.length) { body.append(h("div", { class: "card" }, h("p", {}, "Tous les mots prévus sont déjà découverts."), btn("Continuer ➜", () => { markDone("new"); nextStep("new"); }, "btn primary"))); return; }
     let i = Math.min(get().program.last?.day === dayN && get().program.last?.step === "new" ? (get().program.last.index || 0) : 0, ids.length - 1);
     const holder = h("div", {});
-    body.append(h("p", { class: "small muted" }, `Peu de mots, mais bien retenus. Écoutez, répétez, puis passez au suivant.`), holder);
+    body.append(holder);
     const show = () => {
       const it = itemById(ids[i]);
       discover(it.id);
       setLast(dayN, "new", i);
-      holder.replaceChildren(h("div", { class: "progress-dots" }, `Mot ${i + 1} / ${ids.length}`), wordCard(it, { onNext: () => { i++; if (i < ids.length) show(); else quick(); } }));
-      setTimeout(() => speak(it.en), 300);
+      holder.replaceChildren(wordGames(it, i + 1, ids.length, () => { i++; if (i < ids.length) show(); else quick(); }));
     };
     const quick = () => {
       holder.replaceChildren(h("h3", {}, "Petite vérification à l'écoute"), quizRunner(shuffle(ids).map(id => makeQuestion(itemById(id), "listen_choose")), ({ ok, total }) => {

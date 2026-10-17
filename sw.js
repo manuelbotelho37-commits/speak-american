@@ -1,6 +1,6 @@
 // Service worker : l'application fonctionne hors ligne (sauf l'IA et la reconnaissance vocale).
 // Les progrès sont dans localStorage : une mise à jour de ce fichier ne les efface JAMAIS.
-const VERSION = "sa-v1.0.11";
+const VERSION = "sa-v1.0.12";
 const SHELL = ["./", "index.html", "css/style.css", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png",
   "js/main.js", "js/ui.js", "js/store.js", "js/srs.js", "js/speech.js", "js/ai.js", "js/content.js", "js/program.js", "js/talk.js", "js/learn.js", "js/pron.js"];
 
