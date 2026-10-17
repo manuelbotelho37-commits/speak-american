@@ -105,7 +105,9 @@ function homePage() {
   const items = STEPS.map(([k, l]) => {
     const done = ds.steps[k] || (k === "new" && info.review);
     const label = k === "new" ? (info.review ? "Jour de bilan : pas de nouveaux mots" : `Apprendre ${Math.min(PLAN[st.settings.duration].newMax, st.settings.newPerSession)} nouveaux mots`) : k === "conv" ? `Parler avec ${ch.name}` : k === "revision" ? `Réviser mes expressions${due ? ` (${due})` : ""}` : l;
-    return h("li", { class: done ? "done" : "" }, h("span", { class: "box", "aria-hidden": "true" }, done ? "☑" : "☐"), " ", label);
+    // Chaque ligne est un bouton : on ouvre directement cette étape (même déjà faite, pour la refaire).
+    return h("li", { class: done ? "done" : "" }, h("button", { type: "button", class: "check-row", onClick: () => { update(x => { x.program.openStep = k; }); nav.go("lecon", cd); } },
+      h("span", { class: "box", "aria-hidden": "true" }, done ? "☑" : "☐"), " ", h("span", { class: "grow" }, label), h("span", { class: "go", "aria-hidden": "true" }, done ? "↻" : "▶")));
   });
   const last = st.program.last;
   const startLabel = stepsDone > 0 && !ds.done ? "CONTINUER MA LEÇON" : ds.done ? "SÉANCE DU JOUR TERMINÉE ✓" : "COMMENCER MA LEÇON";

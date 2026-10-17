@@ -318,3 +318,7 @@ body.focus-on .bottomnav{display:none}
 .wg-foot{text-align:center}
 .words.big{font-size:1.4rem;text-align:center}
 .center{text-align:center}
+.checklist li{padding:0}
+.check-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;padding:12px 4px;cursor:pointer;border-radius:8px}
+.check-row:hover,.check-row:focus-visible{background:var(--surface-2)}
+.check-row .grow{flex:1}.check-row .go{color:var(--primary);font-size:1.1rem}

@@ -664,6 +664,9 @@ export function lessonPage(dayN, nav) {
       h("div", { class: "small muted" }, `Durée prévue : ${get().settings.duration} minutes (modifiable dans Réglages).`)),
     stepsBox, area);
   root.cleanup = () => { cleanupArea(); unfocus(false); };
+  const forced = get().program.openStep; // étape touchée sur l'accueil
+  if (forced) update(x => { delete x.program.openStep; });
+  if (forced && order.includes(forced) && !(forced === "new" && skipNew)) { setTimeout(() => open(forced), 0); return root; }
   const last = get().program.last;
   const startStep = last?.day === dayN && last.step && !dayState(dayN).steps[last.step] ? last.step : order.find(k => !dayState(dayN).steps[k] && !(k === "new" && skipNew));
   if (dayState(dayN).done && !startStep) { body.append(h("div", { class: "card" }, h("p", {}, "✅ Cette séance est déjà terminée. Vous pouvez refaire n'importe quelle étape ci-dessus."))); }

@@ -131,6 +131,11 @@ if (discovered !== 5) throw new Error("5 mots attendus, trouvé " + discovered);
 if (!st.errors.length) throw new Error("correction non enregistrée");
 if (!st.log[Object.keys(st.log)[0]].reviews) throw new Error("révisions non comptées");
 await page.screenshot({ path: `${OUT}/07-accueil.png`, fullPage: true });
+step("Accueil : toucher une étape de « Ma séance » l'ouvre");
+await page.locator(".check-row", { hasText: "Travailler ma prononciation" }).click();
+await page.locator(".lesson-area.focus .studio").first().waitFor();
+await page.getByRole("button", { name: "Quitter le plein écran" }).first().click();
+await page.goto(URL0 + "#/home"); await page.locator(".checklist").waitFor();
 
 step("Révision : simuler le lendemain (mots dus)");
 await editState(() => { const s = JSON.parse(localStorage.getItem("speak-american:v1")); for (const c of Object.values(s.cards)) c.due = Date.now() - 1000; localStorage.setItem("speak-american:v1", JSON.stringify(s)); });
