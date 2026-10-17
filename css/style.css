@@ -342,3 +342,12 @@ body.focus-on .chat-controls{bottom:0}
 .assist-mini .btn{min-height:40px;padding:6px 14px}
 .end-mini{border-color:var(--accent)}
 .assist[hidden]{display:none}
+.q-counter{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.q-row{justify-content:space-between;align-items:baseline}
+.q-counter b{color:var(--primary-2);font-size:1.1rem}
+.q-counter .bar{height:8px;background:var(--surface-2);border-radius:8px;overflow:hidden}.q-counter .bar i{display:block;height:100%;background:var(--primary);transition:width .4s}
+.q-counter{position:sticky;top:0;z-index:4;background:var(--bg);padding:6px 0 8px}
+.lesson-area.focus .q-counter{top:58px}
+.chat.is-over .mic-btn,.chat.is-over .input-row{display:none}
+.done-panel .row .btn{min-height:46px}
+.chat.is-over .assist-mini,.chat.is-over .assist{display:none}

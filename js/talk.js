@@ -39,6 +39,23 @@ export function conversationView(config) {
   persist();
 
   let root = null;
+  // Nombre de questions de l'exercice : connu d'avance, avec un compteur « Question 3 / 6 ».
+  const total = guided ? guided.steps.length : (config.questions || (currentDay() <= 21 ? 5 : 7));
+  if (conv.extra == null) conv.extra = 0;
+  const totalNow = () => total + (conv.extra || 0);
+  const answered = () => guided ? conv.step : conv.history.filter(m => m.role === "user").length;
+  const counter = h("div", { class: "q-counter" });
+  function drawCounter() {
+    const n = totalNow(), a = Math.min(answered(), n);
+    const cur = Math.min(a + 1, n);
+    counter.replaceChildren(h("div", { class: "row q-row" }, h("b", {}, a >= n ? `✅ ${n} / ${n} questions` : `Question ${cur} / ${n}`), h("span", { class: "muted small" }, a >= n ? "Exercice terminé" : n - a === 1 ? "dernière question !" : `il en reste ${n - a}`)),
+      h("div", { class: "bar" }, h("i", { style: { width: Math.round(100 * a / n) + "%" } })));
+  }
+  function finishedPanel() {
+    return h("div", { class: "choice-panel done-panel" },
+      h("div", { class: "wg-fb ok" }, `🎉 Bravo ! Vous avez répondu aux ${totalNow()} questions.`),
+      h("div", { class: "row wrap" }, btn("🏁 Terminer l'exercice", () => runAction("end"), "btn primary"), btn("➕ 3 questions de plus", () => { conv.extra = (conv.extra || 0) + 3; persist(); render(); isAI ? aiTurn("continue") : null; }, "btn ghost")));
+  }
   const list = h("div", { class: "chat-list", "aria-live": "polite" });
   const statusLine = h("div", { class: "chat-status", role: "status" });
   const sugBox = h("div", { class: "suggestions" });
@@ -66,8 +83,12 @@ export function conversationView(config) {
     const la = lastAssistant();
     sugBox.replaceChildren();
     const lastMsg = conv.history[conv.history.length - 1];
-    const hasChoices = !!(la && lastMsg === la && la.suggestions?.length);
-    if (hasChoices) sugBox.append(choicePanel(la));
+    drawCounter();
+    const over = isAI && answered() >= totalNow();
+    const hasChoices = !over && !!(la && lastMsg === la && la.suggestions?.length);
+    root?.classList.toggle("is-over", over);
+    if (over) sugBox.append(finishedPanel());
+    else if (hasChoices) sugBox.append(choicePanel(la));
     root?.classList.toggle("has-choices", hasChoices);
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 30);
   }
@@ -241,6 +262,7 @@ export function conversationView(config) {
     conv.helpUsed = false;
     const la = lastAssistant(); if (la) la.showSug = false;
     persist(); render();
+    if (isAI && answered() >= totalNow()) { handsFree = false; try { listener?.abort?.(); } catch {} updateMic(); setStatus(""); return; }
     if (isAI) await aiTurn(); else await guidedAnswer(text);
   }
 
@@ -378,7 +400,7 @@ export function conversationView(config) {
   const targetsBox = targets.length ? h("div", { class: "targets small" }, "Mots à placer : ", targets.map(t => h("span", { class: "tag" }, t.en))) : null;
 
   // Les 3 réponses sont collées en bas, au-dessus du micro : la question de Sarah reste visible juste au-dessus.
-  root = h("div", { class: "chat" }, head, banner, goal, targetsBox, list, statusLine,
+  root = h("div", { class: "chat" }, head, counter, banner, goal, targetsBox, list, statusLine,
     h("div", { class: "chat-controls" }, sugBox, micBtn, h("div", { class: "input-row" }, input, sendBtn)),
     // Écran épuré : seulement « Terminer ». Les autres aides sont rangées derrière « ⋯ Plus d'aide » (Sarah a déjà 🔊 🐢 🇫🇷 sur sa bulle).
     h("div", { class: "row assist-mini" },

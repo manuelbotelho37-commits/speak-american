@@ -109,6 +109,17 @@ await page.locator(".choice-panel .opt-btn", { hasText: "From Lyon." }).click();
 await page.getByText("✅ Bien dit !").waitFor();
 await page.waitForFunction(() => document.querySelectorAll(".msg.them").length >= 3);
 await page.screenshot({ path: `${OUT}/03b-conversation-choix.png` });
+// compteur de questions puis fin d'exercice
+await page.getByText("Question 4 / 5").waitFor();
+for (const t of ["I'm fine.", "Thank you."]) {
+  if (!(await page.getByPlaceholder(/Ou écrivez votre réponse/).isVisible())) await page.getByRole("button", { name: "⌨️ Écrire" }).click();
+  await page.getByPlaceholder(/Ou écrivez votre réponse/).fill(t); await page.keyboard.press("Enter");
+  await page.waitForTimeout(300);
+}
+await page.getByText(/Bravo ! Vous avez répondu aux 5 questions/).waitFor();
+await page.setViewportSize({ width: 412, height: 915 }); await page.waitForTimeout(300);
+await page.screenshot({ path: `${OUT}/03c-conversation-fin.png` });
+await page.setViewportSize({ width: 1280, height: 900 });
 await click(/TERMINER/);
 await page.getByText("Bonne conversation.").waitFor();
 await page.screenshot({ path: `${OUT}/04-bilan.png` });
