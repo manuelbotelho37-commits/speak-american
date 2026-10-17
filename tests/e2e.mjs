@@ -120,7 +120,7 @@ await page.getByText(/Bravo ! Vous avez répondu aux 5 questions/).waitFor();
 await page.setViewportSize({ width: 412, height: 915 }); await page.waitForTimeout(300);
 await page.screenshot({ path: `${OUT}/03c-conversation-fin.png` });
 await page.setViewportSize({ width: 1280, height: 900 });
-await click(/TERMINER/);
+await click(/Terminer l'exercice/);
 await page.getByText("Bonne conversation.").waitFor();
 await page.screenshot({ path: `${OUT}/04-bilan.png` });
 await page.locator(".modal-actions").getByRole("button", { name: "Fermer" }).click();
