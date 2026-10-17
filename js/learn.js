@@ -159,6 +159,12 @@ export function reviewSession(ids, onEnd) {
 }
 
 // Révision « Réponds à Sarah » : on touche la bonne réponse (vert / rouge), puis on la dit à voix haute.
+// Entraînement libre quand rien n'est « à réviser » : les mots déjà vus (sinon ceux du programme jusqu'à aujourd'hui).
+export function practiceIds(n = 8) {
+  let ids = knownItems().map(i => i.id);
+  if (ids.length < 4) ids = [...new Set(ids.concat(allItemsUpTo(Math.max(1, currentDay())).map(i => i.id)))];
+  return shuffle(ids).slice(0, n);
+}
 let lessonFocus = false; // l'étape de leçon est déjà en plein écran
 const PRAISE = ["Great job!", "Perfect!", "Excellent!", "Yes! Well done!", "That's right!"];
 function oralReview(ids, onEnd, onCards) {
@@ -372,6 +378,10 @@ export function lessonPage(dayN, nav) {
   }
 
   // --- 1. Révision ---
+  function revEnd({ done, good }) {
+    markDone("revision");
+    body.replaceChildren(h("div", { class: "card" }, h("h3", {}, "Révision terminée"), h("p", {}, `${done} cartes revues, ${good} bien retenues.`), btn("Continuer ➜", () => nextStep("revision"), "btn primary")));
+  }
   function stepRevision() {
     let ids = dueIds().slice(0, p.rev);
     if (info.review) {
@@ -380,13 +390,13 @@ export function lessonPage(dayN, nav) {
     }
     const head = h("div", {}, h("h2", {}, "🔁 Révision intelligente"), h("p", { class: "small muted" }, "Les expressions reviennent quand vous êtes sur le point de les oublier (méthode FSRS). Soyez honnête : « Oublié » n'est pas un échec, c'est ce qui les fait revenir plus souvent."));
     if (!ids.length) {
-      body.append(head, h("div", { class: "card" }, h("p", {}, dayN === 1 ? "Rien à réviser aujourd'hui : c'est votre premier jour !" : "Rien à réviser pour l'instant : vos mots ne sont pas encore sur le point d'être oubliés. 👍"), btn("Continuer ➜", () => { markDone("revision"); nextStep("revision"); }, "btn primary")));
+      const pr = practiceIds();
+      body.append(head, h("div", { class: "card" }, h("p", {}, "Rien d'urgent à réviser aujourd'hui. 👍 Vous pouvez quand même jouer avec Sarah."),
+        h("div", { class: "row wrap" }, pr.length ? btn("💬 Jouer avec Sarah", () => body.replaceChildren(reviewSession(pr, revEnd)), "btn huge primary") : null,
+          btn("Passer ➜", () => { markDone("revision"); nextStep("revision"); }, "btn"))));
       return;
     }
-    body.append(head, reviewSession(ids, ({ done, good }) => {
-      markDone("revision");
-      body.replaceChildren(h("div", { class: "card" }, h("h3", {}, "Révision terminée"), h("p", {}, `${done} cartes revues, ${good} bien retenues.`), btn("Continuer ➜", () => nextStep("revision"), "btn primary")));
-    }));
+    body.append(head, reviewSession(ids, revEnd));
   }
 
   // --- 2. Nouveaux mots ---

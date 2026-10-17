@@ -52,8 +52,9 @@ await click("Lancer ma première leçon");
 
 step("Leçon jour 1 : révision");
 await page.getByRole("heading", { name: "Dire bonjour" }).waitFor();
-await page.getByText("Rien à réviser aujourd'hui").waitFor();
-await click("Continuer ➜");
+await page.getByText("Rien d'urgent à réviser").waitFor();
+await page.getByRole("button", { name: "💬 Jouer avec Sarah" }).waitFor();
+await click("Passer ➜");
 await page.getByText("Étape terminée, bravo !").waitFor();
 await page.screenshot({ path: `${OUT}/02b-pause.png` });
 await click(/▶️ Continuer :/);

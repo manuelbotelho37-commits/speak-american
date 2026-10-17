@@ -6,7 +6,7 @@ import { PROGRAM, MONTHS, dayInfo } from "./program.js";
 import { PLACEMENT, CHARACTERS, SOUNDS, CEFR } from "./content.js";
 import { checkAi, aiStatus, onAiStatus } from "./ai.js";
 import { conversationView, talkPage, dialoguesPage, americaPage } from "./talk.js";
-import { lessonPage, reviewSession, vocabPage, memoryPage, gamesPage, listenPage, pronPage, STEPS, PLAN, evaluationView } from "./learn.js";
+import { lessonPage, reviewSession, practiceIds, vocabPage, memoryPage, gamesPage, listenPage, pronPage, STEPS, PLAN, evaluationView } from "./learn.js";
 import { isMastered } from "./srs.js";
 
 // Curseur de vitesse de la voix (réglage global, les boutons « Lentement » ralentissent encore plus)
@@ -130,12 +130,13 @@ function homePage() {
     h("div", { class: "simple3" },
       btn(h("span", {}, "▶️", h("br"), "CONTINUER MA LEÇON"), () => nav.go("lecon", cd), "btn big3"),
       btn(h("span", {}, "🎤", h("br"), "PARLER AVEC ALEX"), () => nav.openConversation({ kind: "ai", character: "alex", situation: `Today's lesson topic: ${info.title} — ${info.objective}`, situationFr: info.title }), "btn big3"),
-      btn(h("span", {}, "🔁", h("br"), `RÉVISER MES MOTS${due ? ` (${due})` : ""}`), () => due ? nav.reviewNow() : nav.go("vocabulaire"), "btn big3")),
+      btn(h("span", {}, "🔁", h("br"), `RÉVISER MES MOTS${due ? ` (${due})` : ""}`), () => nav.reviewNow(), "btn big3")),
     h("div", { class: "card small muted" }, `🗓️ ${streak} jour${streak > 1 ? "s" : ""} d'entraînement au total · ${studiedIds().length} mots étudiés · ${masteredIds().length} bien retenus`));
 }
 
 function revisionPage() {
-  const ids = dueIds().slice(0, 30);
+  let ids = dueIds().slice(0, 30);
+  if (!ids.length) ids = practiceIds(); // rien d'urgent : on joue quand même avec Sarah
   const box = h("div", {});
   if (!ids.length) box.append(h("div", { class: "card" }, h("p", {}, "Rien à réviser pour l'instant. 👍"), btn("Retour à l'accueil", () => nav.go("home"), "btn primary")));
   else box.append(reviewSession(ids, ({ done, good }) => box.replaceChildren(h("div", { class: "card" }, h("h3", {}, "Révision terminée"), h("p", {}, `${done} cartes revues, ${good} bien retenues.`), btn("Retour à l'accueil", () => nav.go("home"), "btn primary")))));
