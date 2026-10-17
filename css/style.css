@@ -265,3 +265,25 @@ details summary { cursor: pointer; }
 @media (min-width:820px){.update-banner{bottom:24px}}
 .oral-status{font-size:1.15rem;font-weight:600;margin:14px 0 6px;min-height:1.6em;color:var(--primary-2)}
 .oral-review .btn.huge.listening{animation:pulse 1.2s infinite}
+
+.rev-top{display:flex;justify-content:space-between;color:var(--muted);font-size:.95rem;margin-bottom:8px}.rev-top .pts{color:var(--primary-2);font-weight:700}
+.opts{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.opt-btn{text-align:left;justify-content:flex-start;font-size:1.15rem;padding:16px 18px;border:2px solid var(--border);background:var(--surface-2)}
+.opt-btn.ok{border-color:#5fae7a;background:#1f3328;color:#e7f5ec;opacity:1}
+.opt-btn.ko{border-color:var(--accent);background:#3a2324;color:#f7e3e3;opacity:1}
+.opt-btn:disabled{opacity:.55}
+.opt-btn.ok:disabled,.opt-btn.ko:disabled{opacity:1}
+.bubble-big{background:var(--surface-2);border-radius:18px 18px 18px 4px;padding:14px 18px;font-size:1.4rem;font-weight:700;display:inline-block;margin:6px 0}
+.av-line{display:flex;gap:10px;align-items:center;color:var(--muted)}.av-dot{width:40px;height:40px;border-radius:50%;background:#6b5a7a;display:grid;place-items:center;font-size:1.3rem}
+.say-box{border-top:1px solid var(--border);margin-top:12px;padding-top:12px}
+
+/* Exercice en plein écran */
+.oral-review.focus{position:fixed;inset:0;z-index:70;background:var(--bg);overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 24px;display:flex;flex-direction:column}
+.oral-review.focus > *{width:100%;max-width:720px;margin-left:auto;margin-right:auto}
+.oral-review.focus .card.flash{flex:1;display:flex;flex-direction:column;border:none;background:transparent;box-shadow:none;padding:8px 0}
+.oral-review.focus .opt-btn{font-size:1.3rem;padding:20px}
+.oral-review.focus .bubble-big{font-size:1.7rem}
+.oral-review.focus .big-fr{font-size:1.7rem}
+.rev-top{align-items:center;gap:12px}.rev-top .quit{margin-left:auto;font-size:1.3rem}
+body.focus-on .update-banner{bottom:16px}
+.focus-foot{text-align:center;margin-top:8px}

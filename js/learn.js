@@ -150,119 +150,105 @@ export function reviewSession(ids, onEnd) {
   const draw = () => {
     const oral = oralOk && get().settings.reviewMode !== "cards";
     const sw = oralOk ? h("div", { class: "row wrap small" },
-      h("span", { class: "muted" }, oral ? "Mode : 🎤 je réponds à voix haute" : "Mode : 🃏 cartes"),
-      btn(oral ? "🃏 Passer en mode cartes" : "🎤 Passer en mode oral", () => { stopSpeaking(); update(s => { s.settings.reviewMode = oral ? "cards" : "oral"; }); draw(); }, "btn ghost sm")) : null;
-    wrap.replaceChildren(...[sw, oral ? oralReview(ids, onEnd) : cardReview(ids, onEnd)].filter(Boolean));
+      h("span", { class: "muted" }, oral ? "Mode : 💬 je touche puis je dis la réponse" : "Mode : 🃏 cartes"),
+      btn(oral ? "🃏 Passer en mode cartes" : "💬 Revenir au mode Sarah", () => { stopSpeaking(); update(s => { s.settings.reviewMode = oral ? "cards" : "oral"; }); draw(); }, "btn ghost sm")) : null;
+    wrap.replaceChildren(...[oral ? null : sw, oral ? oralReview(ids, onEnd, () => { update(s => { s.settings.reviewMode = "cards"; }); draw(); }) : cardReview(ids, onEnd)].filter(Boolean));
   };
   draw();
   return wrap;
 }
 
-// Révision orale : Alex pose la question à voix haute, on répond au micro, il réagit.
+// Révision « Réponds à Sarah » : on touche la bonne réponse (vert / rouge), puis on la dit à voix haute.
 const PRAISE = ["Great job!", "Perfect!", "Excellent!", "Yes! Well done!", "That's right!"];
-function oralReview(ids, onEnd) {
+function oralReview(ids, onEnd, onCards) {
   const queue = ids.map(id => ({ id, n: 0 }));
-  const wrap = h("div", { class: "oral-review" });
-  let done = 0, good = 0, listener = null, token = 0;
+  const wrap = h("div", { class: "oral-review focus" });
+  let done = 0, good = 0, points = 0, listener = null, token = 0;
+  // Plein écran pendant l'exercice : rien d'autre autour
+  document.body.classList.add("focus-on");
+  const watch = setInterval(() => { if (!wrap.isConnected) { clearInterval(watch); document.body.classList.remove("focus-on"); stopAll(); } }, 800);
   const isAlive = () => wrap.isConnected;
   const stopAll = () => { token++; try { listener?.abort?.(); } catch {} listener = null; stopSpeaking(); };
+  const pool = () => knownItems().concat(VOCAB);
+  const lineOf = (it) => (Array.isArray(it.dlg) && it.dlg.length >= 2 && it.dlg[1]?.[1]) ? it.dlg[1][1] : null;
 
   const next = () => {
     stopAll();
     const cur = queue.shift();
-    if (!cur) { onEnd({ done, good }); return; }
+    if (!cur) { clearInterval(watch); document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); onEnd({ done, good, points }); return; }
     const it = itemById(cur.id);
     if (!it) return next();
-    // Type de question : « dire en anglais » ou « répondre » à une réplique de dialogue
-    const dlg = Array.isArray(it.dlg) && it.dlg.length >= 2 ? it.dlg : null;
-    const reply = dlg && done % 3 === 2 ? { q: dlg[0], a: dlg[1] } : null;
-    const expected = reply ? reply.a[1] : it.en;
+    // Question : une réplique de Sarah (dialogue du mot) ou « Comment dit-on… ? »
+    const dialog = lineOf(it) && it.dlg[0]?.[1] ? { q: it.dlg[0][1], qFr: it.dlg[0][2] || "", a: it.dlg[1][1], aFr: it.dlg[1][2] || "" } : null;
+    const correct = dialog ? dialog.a : it.en;
+    const others = shuffle(pool().filter(x => x.id !== it.id).map(x => dialog ? lineOf(x) : x.en).filter(t => t && t !== correct));
+    const choices = shuffle([correct, ...[...new Set(others)].slice(0, 2)]);
+    let answered = false, tappedOk = false, finished = false;
+
     const status = h("div", { class: "oral-status" });
     const heard = h("div", { class: "small muted" });
-    const answerBox = h("div", { class: "reveal hidden" },
-      h("div", { class: "big-en" }, expected, " ", speakIcon(expected)),
-      h("div", { class: "ph" }, reply ? (reply.a[2] || "") : it.ph),
-      !reply ? h("div", { class: "big-fr" }, it.fr) : null,
-      it.tip ? h("div", { class: "tip small" }, "🧠 ", it.tip) : null);
-    let tries = 0, finished = false;
+    const sayBox = h("div", { class: "say-box hidden" });
+    const grade = (g) => { if (finished) return; finished = true; answer(cur.id, g, g >= 3 ? "usedSpont" : null); done++; if (g >= 3) good++; if (g === 1 && cur.n < 1) queue.push({ id: cur.id, n: cur.n + 1 }); };
+    const ptsEl = h("span", { class: "pts" }, `⭐ ${points} pts`);
+    const addPts = (n) => { points += n; ptsEl.textContent = `⭐ ${points} pts`; };
 
-    const ask = async () => {
-      const my = ++token;
-      setStatus("🔊 Alex vous parle…");
-      if (reply) {
-        await speakFr("Répondez en anglais.");
-        if (my !== token) return;
-        await speak(reply.q[1], { charId: "sarah" });
-      } else {
-        await speakFr("Comment dit-on : " + it.fr.replace(/\(.*?\)/g, "").replace(/[«»"]/g, "").trim() + " ?");
-      }
-      if (my !== token || !isAlive()) return;
-      hear();
-    };
-    const setStatus = (t) => { status.textContent = t; };
-    const grade = (g) => {
-      if (finished) return; finished = true;
-      answer(cur.id, g, "usedSpont");
-      done++; if (g >= 3) good++;
-      if (g === 1 && cur.n < 1) queue.push({ id: cur.id, n: cur.n + 1 });
+    const optBtns = choices.map(c => btn(h("span", {}, "💬 ", c), () => pick(c, optBtns[choices.indexOf(c)]), "btn opt-btn"));
+    const pick = async (c, el) => {
+      if (answered) return; answered = true;
+      tappedOk = c === correct;
+      optBtns.forEach((b, i) => { b.disabled = true; if (choices[i] === correct) b.classList.add("ok"); });
+      if (!tappedOk) el.classList.add("ko");
+      if (tappedOk) addPts(10);
+      status.textContent = tappedOk ? "✅ Bonne réponse !" : "❌ Ce n'est pas ça. La bonne réponse est en vert.";
+      stopAll(); const my = ++token;
+      sayBox.classList.remove("hidden");
+      sayBox.replaceChildren(
+        h("div", { class: "q" }, "🗣 Maintenant, dites-la à voix haute :"),
+        h("div", { class: "big-en" }, correct, " ", speakIcon(correct)),
+        h("div", { class: "small muted" }, dialog ? dialog.aFr : it.fr),
+        support.stt ? micBtn : null, heard,
+        h("div", { class: "row wrap" }, btn("⏭ Question suivante", () => { grade(tappedOk ? 3 : 1); next(); }, "btn")));
+      await speak(correct, { rate: 0.85 });
+      if (support.stt && my === token && isAlive()) setTimeout(() => { if (my === token && isAlive()) hear(); }, 250);
     };
     const hear = async () => {
-      stopAll();
-      const my = ++token;
-      setStatus("🎤 À vous ! Dites-le en anglais…");
-      micBtn.classList.add("listening");
+      stopAll(); const my = ++token;
+      micBtn.classList.add("listening"); heard.textContent = "🎤 Je vous écoute…";
       let r;
       try { listener = listen({ onInterim: t => { heard.textContent = "« " + t + " »"; } }); r = await listener.promise; }
-      catch (e) { setStatus(sttErrorFr(e.code)); micBtn.classList.remove("listening"); return; }
+      catch (e) { heard.textContent = sttErrorFr(e.code); micBtn.classList.remove("listening"); return; }
       finally { listener = null; }
       micBtn.classList.remove("listening");
       if (my !== token || !isAlive()) return;
-      if (!r?.text) { setStatus("⏸ Je vous attends. Prenez votre temps, puis appuyez sur 🎤 Répondre."); return; }
-      heard.textContent = "Compris : « " + r.text + " »";
-      const c = compareWords(expected, [r.text, ...(r.alternatives || [])]);
-      const ratio = c.total ? c.ok / c.total : 0;
-      if (ratio >= 0.75) {
-        grade(tries === 0 ? 3 : 2);
-        answerBox.classList.remove("hidden");
-        setStatus("✅ Bravo !");
+      if (!r?.text) { heard.textContent = "⏸ Je vous attends : appuyez sur 🎤 quand vous êtes prêt."; return; }
+      const c = compareWords(correct, [r.text, ...(r.alternatives || [])]);
+      if (c.total && c.ok / c.total >= 0.6) {
+        addPts(5);
+        heard.textContent = `✅ Bien dit ! (+5 ⭐) Compris : « ${r.text} »`;
+        grade(tappedOk ? 3 : 2);
         await speak(PRAISE[Math.floor(Math.random() * PRAISE.length)], { charId: "alex" });
-        if (my === token && isAlive()) setTimeout(() => { if (my === token) next(); }, 700);
+        if (my === token && isAlive()) setTimeout(() => { if (my === token) next(); }, 600);
       } else {
-        tries++;
-        answerBox.classList.remove("hidden");
-        if (tries >= 2) grade(1);
-        setStatus(ratio >= 0.4 ? "🙂 Presque ! Écoutez et répétez." : "Écoutez la bonne réponse et répétez-la.");
-        await speakFr(ratio >= 0.4 ? "Presque ! Écoutez." : "Écoutez bien.");
-        if (my !== token) return;
-        await speak(expected, { rate: 0.7 });
-        if (my !== token || !isAlive()) return;
-        if (tries >= 3) { setStatus("On passe à la suite, cette expression reviendra bientôt."); setTimeout(() => { if (my === token) next(); }, 1200); return; }
-        hear();
+        heard.textContent = `🙂 Presque ! Compris : « ${r.text} ». Écoutez et réessayez.`;
+        await speak(correct, { rate: 0.7 });
       }
     };
-    const dontKnow = async () => {
-      stopAll(); const my = ++token;
-      grade(1); tries = 2;
-      answerBox.classList.remove("hidden");
-      setStatus("Pas de souci ! Écoutez et répétez.");
-      await speakFr("Pas de souci. Écoutez et répétez.");
-      if (my !== token) return;
-      await speak(expected, { rate: 0.7 });
-      if (my === token && isAlive()) hear();
-    };
-    const micBtn = btn("🎤 Répondre", () => hear(), "btn huge primary");
-    const front = reply
-      ? h("div", {}, h("div", { class: "q" }, "💬 Répondez à Sarah :"), h("div", { class: "big-en" }, reply.q[1]), h("div", { class: "small muted" }, reply.q[2] || ""))
-      : h("div", {}, h("div", { class: "q" }, "🗣 Comment dit-on en anglais :"), h("div", { class: "big-fr" }, it.fr), it.emoji ? h("div", { class: "emoji-big" }, it.emoji) : null);
+    const micBtn = btn("🎤 Je la dis", () => hear(), "btn huge primary");
+    const replay = () => { stopAll(); dialog ? speak(dialog.q, { charId: "sarah" }) : speakFr("Comment dit-on : " + it.fr.replace(/\(.*?\)/g, "").replace(/[«»"]/g, "").trim() + " ?"); };
+    const head = dialog
+      ? h("div", {}, h("div", { class: "av-line" }, h("span", { class: "av-dot" }, "👩"), "Sarah vous parle :"),
+          h("div", { class: "bubble-big" }, dialog.q, " ", h("button", { type: "button", class: "icon-btn", "aria-label": "Réécouter", onClick: replay }, "🔊")),
+          h("div", { class: "small muted" }, dialog.qFr),
+          h("div", { class: "q" }, "Touchez la bonne réponse :"))
+      : h("div", {}, h("div", { class: "q" }, "🗣 Comment dit-on en anglais :"), h("div", { class: "big-fr" }, it.emoji ? it.emoji + " " : "", it.fr, " ", h("button", { type: "button", class: "icon-btn", "aria-label": "Réécouter", onClick: replay }, "🔊")),
+          h("div", { class: "q" }, "Touchez la bonne réponse :"));
     wrap.replaceChildren(
-      h("div", { class: "progress-dots" }, `Question ${done + 1} · encore ${queue.length} après celle-ci`),
-      h("div", { class: "card flash" }, front, status, heard, micBtn,
-        h("div", { class: "row wrap" },
-          btn("🔊 Réécouter la question", () => ask(), "btn"),
-          btn("💡 Je ne sais pas", () => dontKnow(), "btn"),
-          btn("⏭ Suivant", () => next(), "btn ghost")),
-        answerBox));
-    setTimeout(() => { if (isAlive()) ask(); }, 300);
+      h("div", { class: "rev-top" }, h("span", {}, `Question ${done + 1} · encore ${queue.length} après`), ptsEl,
+        h("button", { type: "button", class: "icon-btn quit", "aria-label": "Quitter le plein écran", onClick: () => { stopAll(); clearInterval(watch); document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); } }, "✕")),
+      h("div", { class: "bar" }, h("span", { style: { width: Math.round(100 * done / Math.max(1, done + queue.length + 1)) + "%" } })),
+      h("div", { class: "card flash" }, head, h("div", { class: "opts" }, optBtns), status, sayBox),
+      onCards ? h("div", { class: "focus-foot" }, btn("🃏 Mode cartes", () => { stopAll(); clearInterval(watch); document.body.classList.remove("focus-on"); onCards(); }, "btn ghost sm")) : null);
+    setTimeout(() => { if (isAlive()) replay(); }, 300);
   };
   next();
   return wrap;

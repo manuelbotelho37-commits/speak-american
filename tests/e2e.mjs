@@ -113,24 +113,36 @@ step("Révision : simuler le lendemain (mots dus)");
 await editState(() => { const s = JSON.parse(localStorage.getItem("speak-american:v1")); for (const c of Object.values(s.cards)) c.due = Date.now() - 1000; localStorage.setItem("speak-american:v1", JSON.stringify(s)); });
 await page.reload();
 console.log("    bouton :", (await page.locator(".big3").nth(2).textContent())); await page.locator(".big3").nth(2).click();
-step("Révision orale : Alex pose la question, on répond au micro");
-await page.locator(".oral-review .big-fr").first().waitFor();
-const expected = await page.locator(".oral-review .reveal .big-en").first().textContent();
-await page.evaluate((t) => { window.__fakeSay = t; }, expected.replace("🔊", "").trim());
-await click("🎤 Répondre");
-await page.getByText("✅ Bravo !").waitFor({ timeout: 20000 });
-await page.screenshot({ path: `${OUT}/08-revision-orale.png` });
-await page.evaluate(() => { window.__fakeSay = "banana"; });
-await page.waitForFunction(() => /Question 2/.test(document.querySelector(".oral-review .progress-dots")?.textContent || ""), null, { timeout: 20000 });
-await click("💡 Je ne sais pas");
-await page.getByText(/Écoutez et répétez/).first().waitFor();
+step("Révision « Réponds à Sarah » : toucher puis dire");
+await page.locator(".oral-review .opt-btn").first().waitFor();
+// mauvaise réponse d'abord → rouge
+const wrongIdx = await page.evaluate(() => { const bs=[...document.querySelectorAll(".oral-review .opt-btn")]; return bs.length; });
 await page.evaluate(() => { window.__fakeSay = ""; });
+const correctText = await page.evaluate(() => null);
+await page.locator(".oral-review .opt-btn").first().click();
+await page.locator(".oral-review .opt-btn.ok").waitFor();
+const okText = (await page.locator(".oral-review .opt-btn.ok").textContent()).replace("💬", "").trim();
+await page.locator(".oral-review .say-box:not(.hidden)").waitFor();
+await page.evaluate((t) => { window.__fakeSay = t; }, okText);
+await click("🎤 Je la dis");
+await page.getByText(/Bien dit/).waitFor({ timeout: 20000 });
+await page.screenshot({ path: `${OUT}/08-revision-sarah.png` });
+await page.evaluate(() => { window.__fakeSay = ""; });
+await page.waitForFunction(() => /Question 2/.test(document.querySelector(".oral-review .rev-top")?.textContent || ""), null, { timeout: 20000 });
+// question 2 : on force une erreur visible en rouge si possible
+const n2 = await page.locator(".oral-review .opt-btn").count();
+for (let i = 0; i < n2; i++) { /* on clique la première */ }
+await page.locator(".oral-review .opt-btn").nth(0).click();
+await page.locator(".oral-review .opt-btn.ok").waitFor();
+await page.setViewportSize({ width: 412, height: 915 });
+await page.screenshot({ path: `${OUT}/08b-revision-sarah-rep.png` });
+await page.setViewportSize({ width: 1280, height: 900 });
 step("Révision en mode cartes");
-await click("🃏 Passer en mode cartes");
+await click("🃏 Mode cartes");
 await click("👁 Voir la réponse"); await click("😣 Oublié");
 await click("👁 Voir la réponse"); await click("🙂 Bien");
 await page.screenshot({ path: `${OUT}/08-revision.png` });
-await click("🎤 Passer en mode oral");
+await click("💬 Revenir au mode Sarah");
 
 step("Conversation conservée après rotation / rechargement");
 await page.goto(URL0 + "#/parler");
@@ -173,6 +185,7 @@ await page.screenshot({ path: `${OUT}/12-sombre-deplie.png`, fullPage: true });
 step("Jour 15 : mots préparés par l'IA");
 await editState(() => { const s = JSON.parse(localStorage.getItem("speak-american:v1")); for (let d = 1; d < 15; d++) s.program.days[d] = { steps: {}, done: true }; s.conversation = null; localStorage.setItem("speak-american:v1", JSON.stringify(s)); });
 await page.goto(URL0 + "#/lecon/15"); await page.reload();
+if (await page.locator(".oral-review.focus").count()) await page.getByRole("button", { name: "Quitter le plein écran" }).click();
 await click(/Apprendre/);
 await page.getByText("Test phrase 1").first().waitFor({ timeout: 8000 });
 
