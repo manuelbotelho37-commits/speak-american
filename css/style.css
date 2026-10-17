@@ -250,18 +250,18 @@ body.onboarding .bottomnav, body.onboarding .sidenav { display: none !important;
 .onboarding-card .choices { text-align: left; }
 
 /* Fenêtres */
-.modal-wrap { position: fixed; inset: 0; background: rgba(2, 6, 23, .55); display: grid; place-items: center; z-index: 50; padding: 12px; }
+.modal-wrap { position: fixed; inset: 0; background: rgba(2, 6, 23, .55); display: grid; place-items: center; z-index: 80; padding: 12px; }
 .modal { background: var(--bg); border-radius: 20px; max-width: 680px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow); }
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
 .modal-body { padding: 8px 16px 16px; }
 .modal-body .card { box-shadow: none; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 0 16px 16px; flex-wrap: wrap; }
-.toast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 20px); background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 14px; z-index: 60; opacity: 0; transition: .3s; max-width: 90vw; font-weight: 600; }
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 20px); background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 14px; z-index: 90; opacity: 0; transition: .3s; max-width: 90vw; font-weight: 600; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 details summary { cursor: pointer; }
 
-.update-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:60;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:min(560px,calc(100% - 24px));border:1px solid var(--primary);box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.update-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:90;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:min(560px,calc(100% - 24px));border:1px solid var(--primary);box-shadow:0 8px 30px rgba(0,0,0,.45)}
 @media (min-width:820px){.update-banner{bottom:24px}}
 .oral-status{font-size:1.15rem;font-weight:600;margin:14px 0 6px;min-height:1.6em;color:var(--primary-2)}
 .oral-review .btn.huge.listening{animation:pulse 1.2s infinite}
@@ -281,9 +281,16 @@ details summary { cursor: pointer; }
 .oral-review.focus{position:fixed;inset:0;z-index:70;background:var(--bg);overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 24px;display:flex;flex-direction:column}
 .oral-review.focus > *{width:100%;max-width:720px;margin-left:auto;margin-right:auto}
 .oral-review.focus .card.flash{flex:1;display:flex;flex-direction:column;border:none;background:transparent;box-shadow:none;padding:8px 0}
-.oral-review.focus .opt-btn{font-size:1.3rem;padding:20px}
-.oral-review.focus .bubble-big{font-size:1.7rem}
-.oral-review.focus .big-fr{font-size:1.7rem}
+.oral-review.focus .opt-btn,.lesson-area.focus .oral-review .opt-btn{font-size:1.3rem;padding:20px}
+.oral-review.focus .bubble-big,.lesson-area.focus .oral-review .bubble-big{font-size:1.7rem}
+.oral-review.focus .big-fr,.lesson-area.focus .oral-review .big-fr{font-size:1.7rem}
 .rev-top{align-items:center;gap:12px}.rev-top .quit{margin-left:auto;font-size:1.3rem}
 body.focus-on .update-banner{bottom:16px}
 .focus-foot{text-align:center;margin-top:8px}
+/* Plein écran pendant une étape de leçon */
+.lesson-area .focus-bar{display:none}
+.lesson-area.focus{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;padding:0 16px 24px}
+.lesson-area.focus > *{max-width:760px;margin-left:auto;margin-right:auto}
+.lesson-area.focus .focus-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:3;background:var(--bg);padding:max(12px,env(safe-area-inset-top)) 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.focus-title{color:var(--primary-2,#bea15d);font-weight:700;font-size:1.05rem}
+body.focus-on .bottomnav{display:none}

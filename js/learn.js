@@ -159,14 +159,16 @@ export function reviewSession(ids, onEnd) {
 }
 
 // Révision « Réponds à Sarah » : on touche la bonne réponse (vert / rouge), puis on la dit à voix haute.
+let lessonFocus = false; // l'étape de leçon est déjà en plein écran
 const PRAISE = ["Great job!", "Perfect!", "Excellent!", "Yes! Well done!", "That's right!"];
 function oralReview(ids, onEnd, onCards) {
   const queue = ids.map(id => ({ id, n: 0 }));
-  const wrap = h("div", { class: "oral-review focus" });
+  const own = !lessonFocus; // dans une leçon, c'est la leçon qui gère le plein écran
+  const wrap = h("div", { class: "oral-review" + (own ? " focus" : "") });
   let done = 0, good = 0, points = 0, listener = null, token = 0;
   // Plein écran pendant l'exercice : rien d'autre autour
-  document.body.classList.add("focus-on");
-  const watch = setInterval(() => { if (!wrap.isConnected) { clearInterval(watch); document.body.classList.remove("focus-on"); stopAll(); } }, 800);
+  if (own) document.body.classList.add("focus-on");
+  const watch = setInterval(() => { if (!wrap.isConnected) { clearInterval(watch); if (own) document.body.classList.remove("focus-on"); stopAll(); } }, 800);
   const isAlive = () => wrap.isConnected;
   const stopAll = () => { token++; try { listener?.abort?.(); } catch {} listener = null; stopSpeaking(); };
   const pool = () => knownItems().concat(VOCAB);
@@ -175,7 +177,7 @@ function oralReview(ids, onEnd, onCards) {
   const next = () => {
     stopAll();
     const cur = queue.shift();
-    if (!cur) { clearInterval(watch); document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); onEnd({ done, good, points }); return; }
+    if (!cur) { clearInterval(watch); if (own) document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); onEnd({ done, good, points }); return; }
     const it = itemById(cur.id);
     if (!it) return next();
     // Question : une réplique de Sarah (dialogue du mot) ou « Comment dit-on… ? »
@@ -244,10 +246,10 @@ function oralReview(ids, onEnd, onCards) {
           h("div", { class: "q" }, "Touchez la bonne réponse :"));
     wrap.replaceChildren(
       h("div", { class: "rev-top" }, h("span", {}, `Question ${done + 1} · encore ${queue.length} après`), ptsEl,
-        h("button", { type: "button", class: "icon-btn quit", "aria-label": "Quitter le plein écran", onClick: () => { stopAll(); clearInterval(watch); document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); } }, "✕")),
+        !own ? null : h("button", { type: "button", class: "icon-btn quit", "aria-label": "Quitter le plein écran", onClick: () => { stopAll(); clearInterval(watch); document.body.classList.remove("focus-on"); wrap.classList.remove("focus"); } }, "✕")),
       h("div", { class: "bar" }, h("span", { style: { width: Math.round(100 * done / Math.max(1, done + queue.length + 1)) + "%" } })),
       h("div", { class: "card flash" }, head, h("div", { class: "opts" }, optBtns), status, sayBox),
-      onCards ? h("div", { class: "focus-foot" }, btn("🃏 Mode cartes", () => { stopAll(); clearInterval(watch); document.body.classList.remove("focus-on"); onCards(); }, "btn ghost sm")) : null);
+      onCards ? h("div", { class: "focus-foot" }, btn("🃏 Mode cartes", () => { stopAll(); clearInterval(watch); if (own) document.body.classList.remove("focus-on"); onCards(); }, "btn ghost sm")) : null);
     setTimeout(() => { if (isAlive()) replay(); }, 300);
   };
   next();
@@ -299,7 +301,18 @@ export function lessonPage(dayN, nav) {
   const ch = CHARACTERS[info.character];
   const stepsBox = h("div", { class: "lesson-steps" });
   const area = h("div", { class: "lesson-area" });
+  const body = h("div", { class: "lesson-body" });
+  const fTitle = h("div", { class: "focus-title" });
+  const fBar = h("div", { class: "focus-bar" }, fTitle,
+    h("button", { type: "button", class: "icon-btn quit", "aria-label": "Quitter le plein écran", onClick: () => unfocus(true) }, "✕"));
+  area.append(fBar, body);
   let cleanup = null;
+  // Plein écran : pendant une étape, l'exercice prend toute la page (rien d'autre autour).
+  function focus(title) { fTitle.textContent = title; area.classList.add("focus"); document.body.classList.add("focus-on"); lessonFocus = true; area.scrollTop = 0; }
+  function unfocus(showHint) {
+    area.classList.remove("focus"); document.body.classList.remove("focus-on"); lessonFocus = false;
+    if (showHint) { cleanupArea(); drawSteps(); body.replaceChildren(h("div", { class: "card" }, h("p", {}, "👆 Touchez une étape ci-dessus pour la faire (ou la refaire)."))); stepsBox.scrollIntoView({ block: "start" }); }
+  }
 
   const stepLabel = (k) => k === "new" ? `Apprendre ${Math.min(p.newMax, get().settings.newPerSession)} nouveaux mots` : k === "conv" ? `Parler avec ${ch.name}` : STEPS.find(s => s[0] === k)[1];
   const order = STEPS.map(s => s[0]);
@@ -327,12 +340,12 @@ export function lessonPage(dayN, nav) {
     drawSteps();
     const d = dayState(dayN);
     const left = order.filter(k => !d.steps[k] && !(k === "new" && skipNew)).length;
-    area.replaceChildren(h("div", { class: "card done-card" },
+    body.replaceChildren(h("div", { class: "card done-card" },
       h("div", { class: "emoji-big" }, "✅"), h("h2", {}, "Étape terminée, bravo !"),
       h("p", {}, `Encore ${left} étape${left > 1 ? "s" : ""} pour finir la séance du jour.`),
       h("p", { class: "small muted" }, "Vous pouvez vous arrêter ici : tout est enregistré. La prochaine fois, l'application reprendra exactement à cet endroit."),
       h("div", { class: "row wrap" }, btn(`▶️ Continuer : ${stepLabel(nxt)}`, () => open(nxt), "btn huge primary"), btn("⏸ J'arrête pour l'instant", () => nav.go("home"), "btn"))));
-    area.scrollIntoView({ behavior: "smooth", block: "start" });
+    focus("✅ Étape terminée");
   }
   function markDone(k) { setStep(dayN, k, true); drawSteps(k); }
 
@@ -341,7 +354,7 @@ export function lessonPage(dayN, nav) {
     drawSteps();
     cleanupArea();
     const next = dayInfo(Math.min(120, dayN + 1));
-    area.replaceChildren(h("div", { class: "card done-card" },
+    body.replaceChildren(h("div", { class: "card done-card" },
       h("div", { class: "emoji-big" }, "🎉"), h("h2", {}, `Jour ${dayN} terminé !`),
       h("p", {}, "Bravo. Vos révisions sont programmées automatiquement : les mots reviendront au bon moment."),
       dayN < 120 ? h("p", { class: "small muted" }, `Prochaine séance : jour ${dayN + 1} — ${next.title}. Conseil : une séance par jour suffit, la mémoire travaille pendant le sommeil.`) : h("p", {}, "Vous avez terminé les 120 séances. Continuez à parler avec Alex chaque jour !"),
@@ -353,9 +366,9 @@ export function lessonPage(dayN, nav) {
     cleanupArea();
     setLast(dayN, k);
     drawSteps(k);
-    area.replaceChildren();
+    body.replaceChildren();
+    focus(k === "new" && skipNew ? "Bilan" : stepLabel(k));
     ({ revision: stepRevision, new: stepNew, conv: stepConv, pron: stepPron, test: stepTest })[k]();
-    area.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   // --- 1. Révision ---
@@ -367,18 +380,18 @@ export function lessonPage(dayN, nav) {
     }
     const head = h("div", {}, h("h2", {}, "🔁 Révision intelligente"), h("p", { class: "small muted" }, "Les expressions reviennent quand vous êtes sur le point de les oublier (méthode FSRS). Soyez honnête : « Oublié » n'est pas un échec, c'est ce qui les fait revenir plus souvent."));
     if (!ids.length) {
-      area.append(head, h("div", { class: "card" }, h("p", {}, dayN === 1 ? "Rien à réviser aujourd'hui : c'est votre premier jour !" : "Rien à réviser pour l'instant : vos mots ne sont pas encore sur le point d'être oubliés. 👍"), btn("Continuer ➜", () => { markDone("revision"); nextStep("revision"); }, "btn primary")));
+      body.append(head, h("div", { class: "card" }, h("p", {}, dayN === 1 ? "Rien à réviser aujourd'hui : c'est votre premier jour !" : "Rien à réviser pour l'instant : vos mots ne sont pas encore sur le point d'être oubliés. 👍"), btn("Continuer ➜", () => { markDone("revision"); nextStep("revision"); }, "btn primary")));
       return;
     }
-    area.append(head, reviewSession(ids, ({ done, good }) => {
+    body.append(head, reviewSession(ids, ({ done, good }) => {
       markDone("revision");
-      area.replaceChildren(h("div", { class: "card" }, h("h3", {}, "Révision terminée"), h("p", {}, `${done} cartes revues, ${good} bien retenues.`), btn("Continuer ➜", () => nextStep("revision"), "btn primary")));
+      body.replaceChildren(h("div", { class: "card" }, h("h3", {}, "Révision terminée"), h("p", {}, `${done} cartes revues, ${good} bien retenues.`), btn("Continuer ➜", () => nextStep("revision"), "btn primary")));
     }));
   }
 
   // --- 2. Nouveaux mots ---
   function stepNew() {
-    area.append(h("h2", {}, "✨ Nouveaux mots"));
+    body.append(h("h2", {}, "✨ Nouveaux mots"));
     if (needsContent(dayN) && !get().generated[dayN]) return contentGenerator();
     let ids = ds.newIds;
     if (!ids || !ids.length) {
@@ -387,10 +400,10 @@ export function lessonPage(dayN, nav) {
       ids = [...new Map(candidates.map(c => [c.id, c])).keys()].slice(0, n);
       update(() => { dayState(dayN).newIds = ids; });
     }
-    if (!ids.length) { area.append(h("div", { class: "card" }, h("p", {}, "Tous les mots prévus sont déjà découverts."), btn("Continuer ➜", () => { markDone("new"); nextStep("new"); }, "btn primary"))); return; }
+    if (!ids.length) { body.append(h("div", { class: "card" }, h("p", {}, "Tous les mots prévus sont déjà découverts."), btn("Continuer ➜", () => { markDone("new"); nextStep("new"); }, "btn primary"))); return; }
     let i = Math.min(get().program.last?.day === dayN && get().program.last?.step === "new" ? (get().program.last.index || 0) : 0, ids.length - 1);
     const holder = h("div", {});
-    area.append(h("p", { class: "small muted" }, `Peu de mots, mais bien retenus. Écoutez, répétez, puis passez au suivant.`), holder);
+    body.append(h("p", { class: "small muted" }, `Peu de mots, mais bien retenus. Écoutez, répétez, puis passez au suivant.`), holder);
     const show = () => {
       const it = itemById(ids[i]);
       discover(it.id);
@@ -423,7 +436,7 @@ export function lessonPage(dayN, nav) {
       }
     };
     box.append(btn("✨ Préparer les mots du jour", go, "btn primary"));
-    area.append(box);
+    body.append(box);
     if (aiStatus.state === "ok") go();
   }
 
@@ -432,19 +445,19 @@ export function lessonPage(dayN, nav) {
     const targetIds = (dayState(dayN).newIds || []).concat(dueIds().slice(0, 3));
     const doneBtn = () => h("div", { class: "card" }, h("p", {}, "Conversation terminée. Bravo d'avoir parlé !"), btn("Continuer ➜", () => nextStep("conv"), "btn primary"));
     const start = (kind) => {
-      area.replaceChildren(h("h2", {}, `💬 Parler avec ${ch.name}`));
+      body.replaceChildren(h("h2", {}, `💬 Parler avec ${ch.name}`));
       const v = conversationView({
         kind, character: info.character, guidedId: guidedFor(dayN), lessonDay: dayN,
         situation: `Lesson day ${dayN}: ${info.title} — ${info.objective}`, situationFr: info.title,
         targetIds, goal: `Objectif : environ ${p.goal} échanges.`,
-        onEnd: () => { markDone("conv"); area.replaceChildren(doneBtn()); },
+        onEnd: () => { markDone("conv"); body.replaceChildren(doneBtn()); },
       });
       cleanup = v.cleanup;
-      area.append(v);
+      body.append(v);
     };
-    area.append(h("h2", {}, `💬 Parler avec ${ch.name}`), h("p", { class: "small muted" }, info.objective));
+    body.append(h("h2", {}, `💬 Parler avec ${ch.name}`), h("p", { class: "small muted" }, info.objective));
     const choice = h("div", { class: "card" }, h("p", {}, "Vérification de la connexion à l'IA…"));
-    area.append(choice);
+    body.append(choice);
     checkAi().then(s => {
       const g = guidedFor(dayN);
       if (s.state === "ok") { start("ai"); return; }
@@ -464,9 +477,9 @@ export function lessonPage(dayN, nav) {
     const s = SOUNDS[sound];
     const phrases = [...new Set([...items.filter(it => it.sound === sound).map(it => it.ex || it.en), ...(s?.phrases || [])])].slice(0, p.pron);
     let i = 0;
-    area.append(h("h2", {}, "👄 Prononciation"), soundCard(sound));
+    body.append(h("h2", {}, "👄 Prononciation"), soundCard(sound));
     const holder = h("div", {});
-    area.append(holder);
+    body.append(holder);
     const show = () => {
       if (cleanup) cleanup();
       const st = pronStudio(phrases[i], { sound });
@@ -479,20 +492,20 @@ export function lessonPage(dayN, nav) {
 
   // --- 5. Test ---
   function stepTest() {
-    if (info.evaluation) return area.append(h("h2", {}, "📋 Évaluation du mois"), evaluationView(dayN, () => { markDone("test"); nextStep("test"); }));
+    if (info.evaluation) return body.append(h("h2", {}, "📋 Évaluation du mois"), evaluationView(dayN, () => { markDone("test"); nextStep("test"); }));
     const newIds = dayState(dayN).newIds || [];
     let pool = newIds.map(itemById).filter(Boolean);
     const others = shuffle(knownItems().filter(x => !newIds.includes(x.id)));
     if (info.review) pool = PROGRAM.filter(x => x.week === info.week).flatMap(x => itemsForDay(x.day)).filter(x => get().cards[x.id]?.skills?.discovered);
     pool = [...pool, ...others].slice(0, p.test);
-    area.append(h("h2", {}, "✅ Petit test"));
-    if (!pool.length) { area.append(h("div", { class: "card" }, h("p", {}, "Pas encore de mots à tester."), btn("Terminer ➜", () => { markDone("test"); nextStep("test"); }, "btn primary"))); return; }
+    body.append(h("h2", {}, "✅ Petit test"));
+    if (!pool.length) { body.append(h("div", { class: "card" }, h("p", {}, "Pas encore de mots à tester."), btn("Terminer ➜", () => { markDone("test"); nextStep("test"); }, "btn primary"))); return; }
     const types = ["listen_choose", "fr_to_en", "complete", "say_it"];
     const qs = pool.map((it, k) => makeQuestion(it, types[k % types.length]));
-    area.append(quizRunner(qs, ({ ok, total }) => {
+    body.append(quizRunner(qs, ({ ok, total }) => {
       adaptPace(ok / total);
       markDone("test");
-      area.replaceChildren(h("div", { class: "card" }, h("h3", {}, `Résultat : ${ok} / ${total}`), h("p", {}, ok / total >= 0.8 ? "Excellent ! 💪" : ok / total >= 0.5 ? "C'est bien. Les mots ratés reviendront plus souvent." : "Pas de souci : on apprend en se trompant. Les mots ratés reviendront dès demain."), btn("Continuer ➜", () => nextStep("test"), "btn primary")));
+      body.replaceChildren(h("div", { class: "card" }, h("h3", {}, `Résultat : ${ok} / ${total}`), h("p", {}, ok / total >= 0.8 ? "Excellent ! 💪" : ok / total >= 0.5 ? "C'est bien. Les mots ratés reviendront plus souvent." : "Pas de souci : on apprend en se trompant. Les mots ratés reviendront dès demain."), btn("Continuer ➜", () => nextStep("test"), "btn primary")));
     }));
   }
 
@@ -505,10 +518,10 @@ export function lessonPage(dayN, nav) {
       info.grammar ? h("div", { class: "grammar" }, "📐 Grammaire utile : ", info.grammar) : null,
       h("div", { class: "small muted" }, `Durée prévue : ${get().settings.duration} minutes (modifiable dans Réglages).`)),
     stepsBox, area);
-  root.cleanup = () => cleanupArea();
+  root.cleanup = () => { cleanupArea(); unfocus(false); };
   const last = get().program.last;
   const startStep = last?.day === dayN && last.step && !dayState(dayN).steps[last.step] ? last.step : order.find(k => !dayState(dayN).steps[k] && !(k === "new" && skipNew));
-  if (dayState(dayN).done && !startStep) { area.append(h("div", { class: "card" }, h("p", {}, "✅ Cette séance est déjà terminée. Vous pouvez refaire n'importe quelle étape ci-dessus."))); }
+  if (dayState(dayN).done && !startStep) { body.append(h("div", { class: "card" }, h("p", {}, "✅ Cette séance est déjà terminée. Vous pouvez refaire n'importe quelle étape ci-dessus."))); }
   else setTimeout(() => open(startStep || "revision"), 0);
   return root;
 }

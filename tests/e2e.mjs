@@ -58,7 +58,10 @@ await page.getByText("Étape terminée, bravo !").waitFor();
 await page.screenshot({ path: `${OUT}/02b-pause.png` });
 await click(/▶️ Continuer :/);
 step("Nouveaux mots");
-for (let i = 0; i < 5; i++) { await page.locator(".word .big-en").waitFor(); if (i === 0) await page.screenshot({ path: `${OUT}/02-mot.png` }); await click("J'ai compris ➜"); }
+for (let i = 0; i < 5; i++) { await page.locator(".word .big-en").waitFor(); if (i === 0) await page.screenshot({ path: `${OUT}/02-mot.png` });
+await page.setViewportSize({ width: 412, height: 915 });
+await page.screenshot({ path: `${OUT}/02m-mot-plein-ecran.png` });
+await page.setViewportSize({ width: 1280, height: 900 }); await click("J'ai compris ➜"); }
 for (let i = 0; i < 5; i++) { await page.locator(".choice-btn").first().click(); await click("Suivant ➜"); }
 await click(/Continuer : parler avec Sarah/);
 await click(/▶️ Continuer :/);
@@ -185,7 +188,7 @@ await page.screenshot({ path: `${OUT}/12-sombre-deplie.png`, fullPage: true });
 step("Jour 15 : mots préparés par l'IA");
 await editState(() => { const s = JSON.parse(localStorage.getItem("speak-american:v1")); for (let d = 1; d < 15; d++) s.program.days[d] = { steps: {}, done: true }; s.conversation = null; localStorage.setItem("speak-american:v1", JSON.stringify(s)); });
 await page.goto(URL0 + "#/lecon/15"); await page.reload();
-if (await page.locator(".oral-review.focus").count()) await page.getByRole("button", { name: "Quitter le plein écran" }).click();
+if (await page.locator(".focus").count()) await page.getByRole("button", { name: "Quitter le plein écran" }).first().click();
 await click(/Apprendre/);
 await page.getByText("Test phrase 1").first().waitFor({ timeout: 8000 });
 
