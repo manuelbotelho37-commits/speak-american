@@ -322,12 +322,19 @@ body.focus-on .bottomnav{display:none}
 .check-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;padding:12px 4px;cursor:pointer;border-radius:8px}
 .check-row:hover,.check-row:focus-visible{background:var(--surface-2)}
 .check-row .grow{flex:1}.check-row .go{color:var(--primary);font-size:1.1rem}
-/* Conversation : 3 réponses à toucher puis à dire */
-.choice-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:8px 0}
-.choice-title{font-weight:700;color:var(--primary-2)}
-.choice-panel .opt-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%}
-.choice-panel .opt-en{font-size:1.2rem;font-weight:700}.choice-panel .opt-fr{color:var(--muted);font-size:.95rem}
+/* Conversation : 3 réponses compactes, collées en bas au-dessus du micro */
+.chat-controls .suggestions{display:block}
+.choice-panel{display:flex;flex-direction:column;gap:6px;width:100%}
+.choice-title{font-weight:700;color:var(--primary-2);font-size:.95rem}
+.choice-panel .opts{gap:6px}
+.choice-panel .opt-btn{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;width:100%;margin:0;min-height:0;padding:8px 12px;border-radius:12px}
+.choice-panel .opt-en{font-size:1.05rem;font-weight:700}.choice-panel .opt-fr{color:var(--muted);font-size:.85rem}
+.choice-panel .wg-fb{padding:6px 10px;font-size:1rem}.choice-panel .wg-hint{padding:6px 10px}
+.choice-panel .words.big{font-size:1.1rem}
+.choice-panel .row .btn{min-height:42px;padding:6px 12px}
 .opt-btn.sel{border-color:var(--primary);background:#33301f}
-.suggestions{width:100%}
-.choice-panel{width:100%;max-width:640px;scroll-margin-bottom:170px}
+.chat.has-choices:not(.typing) .input-row{display:none}
+.choice-head{align-items:center;gap:8px}.choice-head .btn{min-height:34px;padding:4px 10px}
+.chat.has-choices .mic-btn{min-height:44px;font-size:.95rem;background:var(--surface-2);color:var(--text);border-color:var(--border)}
+.chat.has-choices .chat-list{max-height:34vh;min-height:120px}
 body.focus-on .chat-controls{bottom:0}

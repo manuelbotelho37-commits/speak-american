@@ -38,6 +38,7 @@ export function conversationView(config) {
   const persist = () => update(s => { s.conversation = conv; });
   persist();
 
+  let root = null;
   const list = h("div", { class: "chat-list", "aria-live": "polite" });
   const statusLine = h("div", { class: "chat-status", role: "status" });
   const sugBox = h("div", { class: "suggestions" });
@@ -65,7 +66,9 @@ export function conversationView(config) {
     const la = lastAssistant();
     sugBox.replaceChildren();
     const lastMsg = conv.history[conv.history.length - 1];
-    if (la && lastMsg === la && la.suggestions?.length) { const cp = choicePanel(la); sugBox.append(cp); setTimeout(() => cp.scrollIntoView({ behavior: "smooth", block: "end" }), 60); }
+    const hasChoices = !!(la && lastMsg === la && la.suggestions?.length);
+    if (hasChoices) sugBox.append(choicePanel(la));
+    root?.classList.toggle("has-choices", hasChoices);
     setTimeout(() => { list.scrollTop = list.scrollHeight; }, 30);
   }
 
@@ -110,7 +113,8 @@ export function conversationView(config) {
           h("div", { class: "row wrap" }, btn("🎤 Réessayer", () => sayIt(text), "btn primary"), tries >= 2 ? btn("➤ Envoyer quand même", () => userSays(text, false), "btn ghost") : null));
       }
     };
-    box.append(h("div", { class: "choice-title" }, "👉 Touchez votre réponse, puis dites-la :"), h("div", { class: "opts" }, btns), say);
+    box.append(h("div", { class: "row choice-head" }, h("div", { class: "choice-title grow" }, "👉 Touchez une réponse, puis dites-la"),
+      btn("⌨️ Écrire", () => { root?.classList.toggle("typing"); if (root?.classList.contains("typing")) input.focus(); }, "btn ghost sm")), h("div", { class: "opts" }, btns), say);
     return box;
   }
 
@@ -157,7 +161,7 @@ export function conversationView(config) {
     setStatus(`${ch.name} parle…`);
     await speak(m.text, { charId, rate: conv.level === "debutant" ? 0.85 : conv.level === "immersion" ? 1.0 : 0.95 });
     if (!alive) return;
-    setStatus(handsFree ? "" : "À vous ! Appuyez sur le micro ou écrivez.");
+    setStatus(handsFree || m.suggestions?.length ? "" : "À vous ! Appuyez sur le micro ou écrivez.");
   }
 
   async function aiTurn(action) {
@@ -373,8 +377,9 @@ export function conversationView(config) {
   const goal = config.goal ? h("div", { class: "goal small" }, "🎯 ", config.goal, " Continuez autant que vous voulez : rien ne s'arrête tout seul.") : null;
   const targetsBox = targets.length ? h("div", { class: "targets small" }, "Mots à placer : ", targets.map(t => h("span", { class: "tag" }, t.en))) : null;
 
-  const root = h("div", { class: "chat" }, head, banner, goal, targetsBox, list, sugBox, statusLine,
-    h("div", { class: "chat-controls" }, micBtn, h("div", { class: "input-row" }, input, sendBtn)),
+  // Les 3 réponses sont collées en bas, au-dessus du micro : la question de Sarah reste visible juste au-dessus.
+  root = h("div", { class: "chat" }, head, banner, goal, targetsBox, list, statusLine,
+    h("div", { class: "chat-controls" }, sugBox, micBtn, h("div", { class: "input-row" }, input, sendBtn)),
     h("div", { class: "assist" }, assists.map(([l, a]) => btn(l, () => runAction(a), a === "end" ? "btn assist-btn end" : "btn assist-btn"))));
 
   root.cleanup = () => { const wasAlive = alive; alive = false; handsFree = false; clearInterval(tick); listener?.abort?.(); stopSpeaking(); if (wasAlive) persist(); };

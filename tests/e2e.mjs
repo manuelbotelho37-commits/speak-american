@@ -94,6 +94,7 @@ await page.getByText("✔ I agree").waitFor();
 await click(/AIDE-MOI À RÉPONDRE/);
 await page.getByText("I'm from France.").first().waitFor();
 await page.screenshot({ path: `${OUT}/03-conversation.png` });
+await page.getByRole("button", { name: "⌨️ Écrire" }).click();
 await page.getByPlaceholder(/Ou écrivez votre réponse/).fill("I'm from France.");
 await page.keyboard.press("Enter");
 await page.waitForFunction(() => document.querySelectorAll(".msg.them").length >= 2);
